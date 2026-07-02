@@ -4,6 +4,7 @@
   "assets": {
     "directory": "./dist"
   },
+  "workers_dev": false,
   "routes": [
     { "pattern": "daoncne.co.kr/*", "zone_name": "daoncne.co.kr" },
     { "pattern": "www.daoncne.co.kr/*", "zone_name": "daoncne.co.kr" }
