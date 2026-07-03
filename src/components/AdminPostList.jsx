@@ -1,4 +1,4 @@
-import React from 'react';
+// import React from 'react';
 import { API_URL } from '../config';
 
 const AdminPostList = ({ posts, onEdit, onDelete }) => (

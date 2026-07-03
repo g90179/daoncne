@@ -1,4 +1,4 @@
-import React from 'react';
+// import React from 'react';
 import PostView from './PostView';
 import { API_URL } from '../config';
 
@@ -47,7 +47,7 @@ const HomeView = ({
             </header>
 
             {/* ─── 2. 메인 인트로 섹션: 원래의 단정한 고정폭(max-w) 레이아웃 복원 ─── */}
-            <section className="bg-[#fafafa] border-b border-neutral-200 py-20 md:py-32 px-6 md:px-12">
+            <section className="bg-[#f4f4f5] border-b border-neutral-200 py-20 md:py-32 px-6 md:px-12">
               <div className="max-w-[1600px] mx-auto text-left space-y-4">
                 <p className="text-xs font-bold uppercase tracking-widest text-neutral-400">Engineering & Logistics Archive</p>
                 <h1 className="text-3xl md:text-5xl lg:text-6xl font-light tracking-tight text-neutral-900 leading-[1.15]">
@@ -89,7 +89,7 @@ const HomeView = ({
                 </div>
                 
                 {/* 💡 요청 반영: 모니터 화면 좌우 끝까지 꽉 채우는 4 ~ 6열 변동 그리드 월(Wall) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-x-6 gap-y-12">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-x-12 gap-y-12">
                   {posts.map(post => {
                     const imageFile = post.files?.find(f => f.type === 'image');
                     const videoFile = post.files?.find(f => f.type === 'video' || f.url?.toLowerCase().endsWith('.mp4'));
@@ -101,7 +101,7 @@ const HomeView = ({
                         className="group cursor-pointer flex flex-col gap-3"
                       >
                         {/* 썸네일 박스 */}
-                        <div className="aspect-[4/3] bg-neutral-50 overflow-hidden relative border border-neutral-100 shadow-sm">
+                        <div className="aspect-[6/4] p-6 bg-[#f4f4f5] overflow-hidden relative border-neutral-100">
                           <div className="absolute inset-0 bg-neutral-950/0 group-hover:bg-neutral-950/5 transition-colors duration-300 z-10 pointer-events-none"></div>
                           
                           {imageFile ? (
@@ -123,7 +123,7 @@ const HomeView = ({
                               </div>
                             </div>
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-neutral-50 text-neutral-300 border border-dashed">
+                            <div className="w-full h-full flex items-center justify-center bg-[#f4f4f5] text-neutral-300 border border-dashed">
                               <span className="text-xs font-medium tracking-widest uppercase">No Media</span>
                             </div>
                           )}
