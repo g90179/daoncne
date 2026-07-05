@@ -6,6 +6,12 @@ import AdminPostList from './components/AdminPostList';
 import { API_URL } from './config';
 import 'ckeditor5/ckeditor5.css';
 
+// ⚙️ [Vite / CRA 자동 대응] 환경 변수(.env)에서 카카오맵 키를 안전하게 로드합니다.
+const KAKAO_MAP_KEY = 
+  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_KAKAO_MAP_KEY) ||
+  (typeof process !== 'undefined' && process.env && process.env.REACT_APP_KAKAO_MAP_KEY) ||
+  ""; 
+
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
   const [adminView, setAdminView] = useState('home'); 
@@ -20,7 +26,7 @@ function App() {
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
 
-  // ⬇️ ✅ [새로 추가됨] 회사 정보 입력을 위한 독립 상태 변수들
+  // 회사 정보 입력을 위한 독립 상태 변수들
   const [companyName, setCompanyName] = useState('');
   const [ceoName, setCeoName] = useState('');
   const [bizNumber, setBizNumber] = useState('');
@@ -28,25 +34,93 @@ function App() {
   const [phone, setPhone] = useState('');
   const [companyEmail, setCompanyEmail] = useState('');
   const [faxNumber, setFaxNumber] = useState('');
+  
+  // 카카오맵 연동을 위한 위도 및 경도 좌표 상태 변수
+  const [lat, setLat] = useState(37.5665); // 기본값: 서울시청 위도
+  const [lng, setLng] = useState(126.9780); // 기본값: 서울시청 경도
+
+  // 카카오맵 및 우편번호 스크립트 동적 로드 이펙트
+  useEffect(() => {
+    if (!KAKAO_MAP_KEY) {
+      console.warn('카카오맵 API 키가 환경 변수에 정의되지 않았습니다. .env 파일을 확인해 주세요.');
+    }
+
+    if (!document.getElementById('kakao-map-script')) {
+      const script = document.createElement('script');
+      script.id = 'kakao-map-script';
+      script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_MAP_KEY}&libraries=services&autoload=false`;
+      document.head.appendChild(script);
+      script.onload = () => {
+        window.kakao.maps.load(() => {
+          console.log('Kakao Map SDK loaded successfully.');
+        });
+      };
+    }
+
+    if (!document.getElementById('daum-postcode-script')) {
+      const script = document.createElement('script');
+      script.id = 'daum-postcode-script';
+      script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+      document.head.appendChild(script);
+    }
+  }, []);
 
   useEffect(() => {
     if (isLoggedIn) {
       fetchUsers();
-      fetchCompanyInfo(); // 로그인 성공 시 기본 회사 정보 바인딩
+      fetchCompanyInfo(); 
     }
     fetchPosts();
   }, [isLoggedIn, activeTab]);
 
+  // 회사 정보 관리용 탭 활성화 시 또는 주소 변경 시 지도 프리뷰 처리
+  useEffect(() => {
+    if (adminView === 'company' && address) {
+      const initializeAdminMap = () => {
+        if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
+          const geocoder = new window.kakao.maps.services.Geocoder();
+          
+          // 주소를 기반으로 위도/경도 좌표 검색 실행
+          geocoder.addressSearch(address, (result, status) => {
+            if (status === window.kakao.maps.services.Status.OK) {
+              const latitudeVal = parseFloat(result[0].y);
+              const longitudeVal = parseFloat(result[0].x);
+              
+              setLat(latitudeVal);
+              setLng(longitudeVal);
+
+              const coords = new window.kakao.maps.LatLng(latitudeVal, longitudeVal);
+              const mapContainer = document.getElementById('admin-map');
+              
+              if (mapContainer) {
+                const mapOption = { center: coords, level: 3 };
+                const map = new window.kakao.maps.Map(mapContainer, mapOption);
+                const marker = new window.kakao.maps.Marker({ position: coords });
+                marker.setMap(map);
+              }
+            }
+          });
+        }
+      };
+
+      if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
+        initializeAdminMap();
+      } else {
+        const timer = setTimeout(initializeAdminMap, 500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [adminView, address]);
+
   const fetchUsers = async () => { try { const res = await axios.get(`${API_URL}/users`); setUsers(res.data); } catch (e) {} };
-  // App.jsx의 데이터 호출(fetch) 함수 예시
+  
   const fetchPosts = async () => {
-    // activeTab이 '전체'면 빈 문자열을 보내 모든 글을 가져옵니다.
     const categoryParam = activeTab === '전체' ? '' : activeTab;
     const response = await axios.get(`${API_URL}/posts?category=${categoryParam}`);
     setPosts(response.data);
   };
   
-  // ⬇️ ✅ [새로 추가됨] 백엔드에서 기존 저장된 회사 정보 가져오기
+  // 백엔드에서 기존 저장된 회사 정보 및 좌표 가져오기
   const fetchCompanyInfo = async () => {
     try {
       const res = await axios.get(`${API_URL}/company`);
@@ -58,13 +132,29 @@ function App() {
         setPhone(res.data.phone || '');
         setCompanyEmail(res.data.email || '');
         setFaxNumber(res.data.fax || '');
+        // 백엔드 스키마에서 동기화된 좌표 바인딩
+        if (res.data.lat) setLat(parseFloat(res.data.lat));
+        if (res.data.lng) setLng(parseFloat(res.data.lng));
       }
     } catch (e) {
       console.log('기존 등록된 회사 정보가 없거나 연결되지 않았습니다.');
     }
   };
 
-  // ⬇️ ✅ [새로 추가됨] 회사 정보 저장/업데이트 요청 함수
+  // 다음 우편번호 팝업 호출 함수
+  const handleAddressSearch = () => {
+    if (window.daum && window.daum.Postcode) {
+      new window.daum.Postcode({
+        oncomplete: function(data) {
+          setAddress(data.address); // 주소창 반영 및 트리거 작동
+        }
+      }).open();
+    } else {
+      alert('주소 검색 서비스를 불러오는 중입니다. 잠시 후 다시 시도해 주세요.');
+    }
+  };
+
+  // 회사 정보 및 추출된 좌표 데이터베이스 통합 저장/업데이트 요청 함수
   const handleSaveCompanyInfo = async () => {
     try {
       await axios.post(`${API_URL}/company`, {
@@ -74,9 +164,11 @@ function App() {
         address: address,
         phone: phone,
         email: companyEmail,
-        fax: faxNumber
+        fax: faxNumber,
+        lat: lat, 
+        lng: lng  
       });
-      alert('회사 정보가 성공적으로 업데이트되었습니다.');
+      alert('회사 정보와 지도 좌표가 성공적으로 업데이트되었습니다.');
     } catch (e) {
       alert('회사 정보 저장에 실패했습니다. 백엔드 엔드포인트를 확인하세요.');
     }
@@ -101,7 +193,7 @@ function App() {
     } catch (e) { alert('계정 생성에 실패했습니다.'); }
   };
 
-  // ─── 좌측 사이드바 내비게이션 (회사 정보 메뉴가 하단에 빌트인 배치됨) ───
+  // 좌측 사이드바 내비게이션
   const Sidebar = () => (
     <aside className="w-64 bg-slate-900 text-white flex flex-col h-screen sticky top-0 shadow-2xl">
       <div className="p-8"><h2 className="text-xl font-black text-orange-500 uppercase tracking-tighter">Daon CNE</h2></div>
@@ -110,8 +202,6 @@ function App() {
         <div className="h-px bg-slate-800 my-4 mx-2" />
         <button onClick={() => setAdminView('posts')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${adminView === 'posts' ? 'bg-orange-500 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>📝 콘텐츠 관리</button>
         <button onClick={() => setAdminView('users')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${adminView === 'users' ? 'bg-orange-500 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>👤 계정 관리</button>
-        
-        {/* ⬇️ ✅ [새로 추가됨] 회사 정보 관리용 대시보드 라우팅 메뉴 버튼 */}
         <button 
           onClick={() => setAdminView('company')} 
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${adminView === 'company' ? 'bg-orange-500 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
@@ -138,6 +228,17 @@ function App() {
             setShowLoginModal={setShowLoginModal}
             selectedPost={selectedPost}
             setSelectedPost={setSelectedPost}
+            companyInfo={{
+              name: companyName,
+              ceo: ceoName,
+              bizNumber,
+              address,
+              phone,
+              email: companyEmail,
+              fax: faxNumber,
+              lat,
+              lng
+            }}
           />
         ) : (
           <main className="p-12">
@@ -186,7 +287,7 @@ function App() {
               </div>
             )}
 
-            {/* ⬇️ ✅ [새로 추가됨] 🏢 회사 정보 관리 통합 마크업 페이지 */}
+            {/* 🏢 회사 정보 관리 통합 마크업 페이지 */}
             {adminView === 'company' && (
               <div className="max-w-4xl mx-auto space-y-12 animate-fadeIn">
                 <div>
@@ -220,9 +321,20 @@ function App() {
                       <label className="text-xs font-black text-slate-500 uppercase tracking-wider">팩스 번호</label>
                       <input type="text" placeholder="02-000-0000" className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl outline-none focus:bg-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition" value={faxNumber} onChange={e => setFaxNumber(e.target.value)} />
                     </div>
+                    
                     <div className="flex flex-col gap-2 md:col-span-2">
                       <label className="text-xs font-black text-slate-500 uppercase tracking-wider">회사 주소</label>
-                      <input type="text" placeholder="본사 혹은 사무실 도로명 주소 입력" className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl outline-none focus:bg-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition" value={address} onChange={e => setAddress(e.target.value)} />
+                      <div className="flex gap-3">
+                        <input type="text" readOnly placeholder="주소 검색 버튼을 클릭하여 도로명 주소를 입력하세요" className="flex-1 px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl outline-none transition text-slate-700 font-medium" value={address} />
+                        <button type="button" onClick={handleAddressSearch} className="px-6 bg-slate-800 text-white rounded-2xl font-black text-sm shadow-md hover:bg-orange-500 transition duration-200">주소 검색</button>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2 md:col-span-2 pt-4">
+                      <label className="text-xs font-black text-slate-500 uppercase tracking-wider">지도 실시간 프리뷰</label>
+                      <div id="admin-map" className="w-full h-72 bg-slate-100 rounded-3xl border border-gray-200 overflow-hidden shadow-inner relative z-10">
+                        {!address && <div className="absolute inset-0 flex items-center justify-center text-slate-400 font-bold text-sm">주소를 입력하시면 이곳에 지도가 활성화됩니다.</div>}
+                      </div>
                     </div>
                   </div>
 
