@@ -14,7 +14,7 @@ function App() {
   const [password, setPassword] = useState('');
   const [users, setUsers] = useState([]);
   const [posts, setPosts] = useState([]);
-  const [activeTab, setActiveTab] = useState('현장사진');
+  const [activeTab, setActiveTab] = useState('전체');
   const [editingPost, setEditingPost] = useState(null);
   const [selectedPost, setSelectedPost] = useState(null);
   const [newEmail, setNewEmail] = useState('');
@@ -38,7 +38,13 @@ function App() {
   }, [isLoggedIn, activeTab]);
 
   const fetchUsers = async () => { try { const res = await axios.get(`${API_URL}/users`); setUsers(res.data); } catch (e) {} };
-  const fetchPosts = async () => { try { const res = await axios.get(`${API_URL}/posts?category=${activeTab}`); setPosts(res.data); } catch (e) {} };
+  // App.jsx의 데이터 호출(fetch) 함수 예시
+  const fetchPosts = async () => {
+    // activeTab이 '전체'면 빈 문자열을 보내 모든 글을 가져옵니다.
+    const categoryParam = activeTab === '전체' ? '' : activeTab;
+    const response = await axios.get(`${API_URL}/posts?category=${categoryParam}`);
+    setPosts(response.data);
+  };
   
   // ⬇️ ✅ [새로 추가됨] 백엔드에서 기존 저장된 회사 정보 가져오기
   const fetchCompanyInfo = async () => {

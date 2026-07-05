@@ -46,7 +46,7 @@ const HomeView = ({
               </div>
             </header>
 
-            {/* ─── 2. 메인 인트로 섹션: 원래의 단정한 고정폭(max-w) 레이아웃 복원 ─── */}
+            {/* ─── 2. 메인 인트로 섹션 ─── */}
             <section className="bg-[#f4f4f5] border-b border-neutral-200 py-20 md:py-32 px-6 md:px-12">
               <div className="max-w-[1600px] mx-auto text-left space-y-4">
                 <p className="text-xs font-bold uppercase tracking-widest text-neutral-400">Engineering & Logistics Archive</p>
@@ -60,19 +60,20 @@ const HomeView = ({
               </div>
             </section>
 
-            {/* ─── 3. 아카이브 섹션: 게시물 레이아웃 부분만 와이드로 꽉 차게 변경 ─── */}
+            {/* ─── 3. 아카이브 섹션: 필터 중앙 정렬 및 전체 탭 추가 ─── */}
             <section className="py-12 bg-white px-4 md:px-10 w-full" id="archive">
               <div className="w-full">
                 
-                {/* 필터 바 (게시물 너비와 일치하도록 와이드 확장) */}
-                <div className="flex items-center justify-between border-b border-neutral-200 pb-6 mb-12 gap-4 text-sm">
+                {/* ✨ 변경 포인트: flex-col items-center justify-center로 중앙 정렬 배치 */}
+                <div className="flex flex-col items-center justify-center border-b border-neutral-200 pb-6 mb-12 gap-3 text-sm">
                   <div className="flex items-center gap-2 text-neutral-400 font-medium">
                     <span>Filter by:</span>
                     <span className="text-neutral-900 font-bold">{activeTab}</span>
                   </div>
                   
-                  <div className="flex gap-6 md:gap-8 font-medium">
-                    {['현장사진', '공사실적', '보유장비'].map(tab => (
+                  {/* ✨ 변경 포인트: '전체' 탭 배열에 추가 */}
+                  <div className="flex flex-wrap justify-center gap-6 md:gap-8 font-medium">
+                    {['전체', '현장사진', '공사실적', '보유장비'].map(tab => (
                       <button 
                         key={tab} 
                         onClick={() => setActiveTab(tab)} 
@@ -88,7 +89,7 @@ const HomeView = ({
                   </div>
                 </div>
                 
-                {/* 💡 요청 반영: 모니터 화면 좌우 끝까지 꽉 채우는 4 ~ 6열 변동 그리드 월(Wall) */}
+                {/* 4열 격자 그리드 */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-x-12 gap-y-12">
                   {posts.map(post => {
                     const imageFile = post.files?.find(f => f.type === 'image');
