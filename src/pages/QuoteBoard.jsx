@@ -128,7 +128,7 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
         ans: captchaInput || undefined
       };
 
-      await axios.post(`${API_URL}/quotes`, payload);
+      await axios.post(`${API_URL}/quotes/`, payload);
       alert('견적 문의가 정상적으로 접수되었습니다.');
       setFormData({ company: '', name: '', phone: '', email: '', title: '', content: '', isSecret: true, password: '', privacyAgreement: false });
       setActiveTab('list');
@@ -142,7 +142,7 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
     }
   };
 
-  
+
   // ✍️ 작성자 글 수정 제출
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
