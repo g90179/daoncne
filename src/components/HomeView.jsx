@@ -88,7 +88,7 @@ const HomeView = ({
 
             {/* ─── 조건부 렌더링 영역 ─── */}
             {showQuoteBoard ? (
-              <QuoteBoard initialTab={quoteTab} /> // ✅ initialTab 프롭스 전달
+              <QuoteBoard initialTab={quoteTab} isLoggedIn={isLoggedIn} /> // ✅ initialTab 프롭스 전달 ✅ isLoggedIn 프롭스 주입!
             ) : (
               /* 🏠 기본 메인 아카이브 레이아웃 */
               <>
