@@ -1,5 +1,3 @@
-// daon-frontend/src/pages/QuoteBoard.jsx 내부 수정
-
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_URL } from '../config';
@@ -23,7 +21,7 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
   const [captchaInput, setCaptchaInput] = useState('');
   const [isCaptchaRequired, setIsCaptchaRequired] = useState(false);
 
-  // src/pages/QuoteBoard.jsx 상단 state 정의 부분
+  // 상단 state 정의 부분
   const [formData, setFormData] = useState({
     company: '', 
     name: '', 
@@ -33,8 +31,34 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
     content: '', 
     isSecret: true, 
     password: '',
-    privacyAgreement: false // 🔥 [추가] 초기값은 체크 해제 상태
+    privacyAgreement: false // 개인정보 수집 동의 상태
   });
+
+  // 🔄 [수정] 백엔드 하이브리드 포맷(success, data 구조)에 맞게 리스트 바인딩 개선
+  const fetchQuotes = async () => {
+    setIsLoading(true);
+    try {
+      const response = await axios.get(`${API_URL}/quotes`);
+      
+      // 백엔드가 { success: true, data: [...] } 구조로 안전하게 감싸 보낸 데이터 매핑
+      if (response.data && response.data.success === true) {
+        setBoardList(response.data.data || []);
+      } else if (Array.isArray(response.data)) {
+        // 혹시 모를 기존 레거시 배열 대응 예외처리
+        setBoardList(response.data);
+      } else {
+        setBoardList([]);
+      }
+    } catch (error) {
+      console.error('견적 목록 로드 실패:', error);
+      setBoardList([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => { setActiveTab(initialTab); handleBackToList(); }, [initialTab]);
+  useEffect(() => { if (activeTab === 'list') fetchQuotes(); }, [activeTab]);
 
   // 2. 글쓰기 탭 진입 시 대기표 자동 수령
   useEffect(() => {
@@ -79,18 +103,15 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
   // 🎯 글 클릭 시 이벤트 처리 핸들러
   const handleRowClick = async (post) => {
     if (isLoggedIn) {
-      // 👑 관리자는 암호 무시하고 바로 디테일 호출
       try {
         const res = await axios.get(`${API_URL}/quotes/${post.id}`);
         setSelectedQuote(res.data);
         setAdminReplyInput(res.data.reply || '');
       } catch (err) { alert('데이터를 불러오지 못했습니다.'); }
     } else if (post.isSecret) {
-      // 🔒 비밀글인 경우 암호 검증 모달 오픈
       setPendingQuoteId(post.id);
       setShowPasswordModal(true);
     } else {
-      // 🔓 공개글은 바로 상세 오픈
       try {
         const res = await axios.get(`${API_URL}/quotes/${post.id}`);
         setSelectedQuote(res.data);
@@ -110,7 +131,7 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
     }
   };
 
-  // 4. handleSubmit 전송 및 가비아 WAF 완전 우회 통과 파이프라인
+  // 4. [수정] All-200-OK 성공 본문 수신 및 가비아 우회 분기문 전면 개편
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -120,7 +141,6 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
     }
 
     try {
-      // 🛡️ 바디 데이터에 복잡한 숫자가 전혀 섞이지 않는 최적화된 스펙트럼 페이로드
       const payload = {
         ...formData,
         tid: serverTid,
@@ -128,20 +148,28 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
         ans: captchaInput || undefined
       };
 
-      await axios.post(`${API_URL}/quotes/`, payload);
+      const res = await axios.post(`${API_URL}/quotes/`, payload);
+      
+      // 🛡️ 가비아 웹서버 우회 대응: HTTP Status 200 내부의 success 플래그 가로채기
+      if (res.data && res.data.success === false) {
+        if (res.data.code === 'CAPTCHA_REQUIRED') {
+          alert('보안 검증이 필요합니다. 아래에 나타난 자동 등록 방지 코드를 입력해 주세요.');
+          fetchCaptcha(); // 캡차 문제판 정상 가동
+        } else {
+          alert(res.data.message || '접수 실패');
+        }
+        return; // 등록 로직 일시 중단 및 화면 유지
+      }
+
+      // 진짜 등록 성공 시에만 통과 실행
       alert('견적 문의가 정상적으로 접수되었습니다.');
       setFormData({ company: '', name: '', phone: '', email: '', title: '', content: '', isSecret: true, password: '', privacyAgreement: false });
+      setCaptchaInput('');
       setActiveTab('list');
     } catch (error) {
-      if (error.response && error.response.status === 403 && error.response.data.message === 'CAPTCHA_REQUIRED') {
-        alert('보안 검증이 필요합니다. 아래에 나타난 자동 등록 방지 코드를 입력해 주세요.');
-        fetchCaptcha();
-      } else {
-        alert(error.response?.data?.message || '접수 실패');
-      }
+      alert('서버 네트워크 통신이 원활하지 않습니다. 잠시 후 다시 전송해 주세요.');
     }
   };
-
 
   // ✍️ 작성자 글 수정 제출
   const handleUpdateSubmit = async (e) => {
@@ -238,7 +266,6 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
             </div>
 
             {!isEditMode ? (
-              // 👁️ 2-A: 일반 읽기 전용 뷰
               <div className="space-y-6">
                 <div>
                   <span className="text-xs text-neutral-400 font-medium">{selectedQuote.company || '개인 방문자'} — {selectedQuote.name} 고객님</span>
@@ -246,7 +273,6 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
                   <p className="text-[11px] text-neutral-300 mt-0.5">등록일: {selectedQuote.createdAt?.replace('T', ' ').slice(0, 16)}</p>
                 </div>
                 
-                {/* 연락처 보안 노출 권한 피드 */}
                 {(isLoggedIn || selectedQuote.phone) && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-neutral-50 p-4 rounded-xl text-xs text-neutral-600">
                     <div><strong>연락처:</strong> {selectedQuote.phone}</div>
@@ -258,7 +284,6 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
                   {selectedQuote.content}
                 </div>
 
-                {/* 📝 일반 고객용 수정 버튼 단락 */}
                 {!isLoggedIn && (
                   <div className="flex justify-end pt-4 border-t border-neutral-100">
                     <button onClick={() => setIsEditMode(true)} className="text-xs font-bold border border-neutral-200 bg-white px-4 py-2 rounded-xl hover:bg-neutral-50 transition-all text-neutral-700">정보 수정하기</button>
@@ -266,7 +291,6 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
                 )}
               </div>
             ) : (
-              // ✏️ 2-B: 작성자 내용 수정 폼 뷰
               <form onSubmit={handleUpdateSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div><label className="block text-xs font-semibold text-neutral-400 mb-1">작성자 성함</label><input type="text" required className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-2.5" value={selectedQuote.name} onChange={(e) => setSelectedQuote({...selectedQuote, name: e.target.value})} /></div>
@@ -279,11 +303,9 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
               </form>
             )}
 
-            {/* 💬 답변 디스플레이 및 입력 영역 분기 */}
             <div className="mt-8 pt-6 border-t border-neutral-200 space-y-4">
               <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider">상담 답변 내역</h3>
               
-              {/* 답변 완료 상태일 때 노출 블록 */}
               {selectedQuote.reply && !isLoggedIn && (
                 <div className="bg-neutral-950 text-neutral-100 p-5 rounded-2xl space-y-2 shadow-sm">
                   <div className="flex justify-between items-center text-[10px] text-neutral-400 font-bold"><span>DAON CNE 대외협력팀</span><span>{selectedQuote.replyAt?.split('T')[0]}</span></div>
@@ -291,10 +313,8 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
                 </div>
               )}
 
-              {/* 답변이 아직 없는 대기 상태일 때 고객 전용 노출문 */}
               {!selectedQuote.reply && !isLoggedIn && <p className="text-xs text-neutral-400 italic">담당 부서에서 문의 사항을 확인하고 있습니다. 서류 검토 후 빠르게 답변해 드리겠습니다.</p>}
 
-              {/* 👑 관리자 권한 전용: 실시간 답변 편집창 폼 활성화 */}
               {isLoggedIn && (
                 <form onSubmit={handleAdminReplySubmit} className="space-y-3 bg-neutral-50 p-4 rounded-2xl border border-neutral-200/40">
                   <label className="block text-xs font-bold text-neutral-600">관리자 전용 공식 코멘트 주입</label>
@@ -318,20 +338,19 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
             <div><label className="block text-xs font-semibold text-neutral-400 mb-2">문의 제목 *</label><input type="text" name="title" required value={formData.title} onChange={handleInputChange} placeholder="문의 사항 핵심 제목" className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3" /></div>
             <div><label className="block text-xs font-semibold text-neutral-400 mb-2">상세 내역 기재 *</label><textarea name="content" required rows={6} value={formData.content} onChange={handleInputChange} placeholder="필요 장비, 공사 종류 등 상세 기재" className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3 resize-none" /></div>
 
-            {/* 1. 🍯 허니팟 필드 (사람 눈에는 완벽히 숨김 처리, 로봇 유인용) */}
-            {/* 숨김 처리된 허니팟 인풋 이름 변경 */}
+            {/* 1. 🍯 허니팟 필드 (사람 눈에는 숨김 처리, 로봇 유인용) */}
             <div className="hidden" aria-hidden="true">
               <input 
                 type="text" 
-                name="email_confirm" // 🛡️ 변장 완료
-                value={formData.email_confirm} 
+                name="email_confirm" 
+                value={formData.email_confirm || ''} 
                 onChange={handleInputChange} 
                 tabIndex="-1" 
                 autoComplete="off" 
               />
             </div>
             
-            {/* 🔒 [추가된 영역] 개인정보 수집 및 이용동의 박스 */}
+            {/* 🔒 개인정보 수집 및 이용동의 박스 */}
             <div className="space-y-2 bg-neutral-50 p-4 rounded-xl border border-neutral-200/60 text-xs text-neutral-600">
               <p className="font-bold text-neutral-800">[필수] 개인정보 수집 및 이용 동의</p>
               <div className="h-20 overflow-y-auto bg-white p-3 rounded-lg border border-neutral-200 text-[11px] leading-relaxed text-neutral-500">
@@ -382,14 +401,14 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
 
       </div>
 
-      {/* 🔑 하위 오버레이 레이어: 비밀번호 확인용 라이트박스 모달 팝업 */}
+      {/* 🔑 비밀번호 확인용 라이트박스 모달 팝업 */}
       {showPasswordModal && (
         <div className="fixed inset-0 bg-neutral-950/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-sm rounded-2xl p-6 border border-neutral-200 shadow-2xl space-y-4 animate-scaleUp">
             <div><h4 className="font-bold text-neutral-900 text-base">비밀글 인증 패널</h4><p className="text-xs text-neutral-400 mt-0.5">글 작성 시 입력했던 본인확인용 비밀번호를 입력하세요.</p></div>
             <form onSubmit={handlePasswordVerify} className="space-y-3">
-              <input type="password" required autofocus className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-neutral-900" placeholder="비밀번호 4자리 입력" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} />
-              <div className="flex gap-2"><button type="button" onClick={() => { setShowPasswordModal(false); setPasswordInput(''); }} className="flex-1 text-xs font-medium text-neutral-500 border border-neutral-100 py-3 rounded-xl hover:bg-neutral-50">닫기</button><button type="submit" className="flex-1 text-xs font-bold text-white bg-neutral-950 py-3 rounded-xl hover:bg-neutral-800">본인 확인 완료</button></div>
+              <input type="password" required autoFocus className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-neutral-900" placeholder="비밀번호 4자리 입력" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} />
+              <div className="flex gap-2"><button type="button" onClick={() => { setShowPasswordModal(false); setPasswordInput(''); }} className="flex-1 text-xs font-medium text-neutral-500 border border-neutral-100 py-3 rounded-xl hover:bg-neutral-50">닫기</button><button type="submit" className="flex-1 text-xs font-bold text-white bg-neutral-950 py-3 rounded-xl hover:bg-hover:bg-neutral-800">본인 확인 완료</button></div>
             </form>
           </div>
         </div>
