@@ -6,6 +6,7 @@ import AdminPostList from './components/AdminPostList';
 import { API_URL } from './config';
 import 'ckeditor5/ckeditor5.css';
 
+
 // ⚙️ 환경 변수 로드 단계
 const KAKAO_MAP_KEY = 
   (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_KAKAO_MAP_KEY) ||
@@ -28,6 +29,7 @@ function App() {
   const [selectedPost, setSelectedPost] = useState(null);
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [addressDetail, setAddressDetail] = useState('');
 
   // ✅ [추가] 로그인한 계정의 이메일을 기억해서 진단 대시보드 노출 여부를 판단
   const [loggedInEmail, setLoggedInEmail] = useState(localStorage.getItem('loggedInEmail') || '');
@@ -272,6 +274,7 @@ function App() {
         setCeoName(res.data.ceo || '');
         setBizNumber(res.data.bizNumber || '');
         setAddress(res.data.address || '');
+        setAddressDetail(res.data.addressDetail || ''); // ✅ 추가
         setPhone(res.data.phone || '');
         setCompanyEmail(res.data.email || '');
         setFaxNumber(res.data.fax || '');
@@ -304,6 +307,7 @@ function App() {
         ceo: ceoName,
         bizNumber: bizNumber,
         address: address,
+        addressDetail: addressDetail, // ✅ 추가
         phone: phone,
         email: companyEmail,
         fax: faxNumber,
@@ -382,6 +386,7 @@ function App() {
             setShowLoginModal={setShowLoginModal}
             selectedPost={selectedPost}
             setSelectedPost={setSelectedPost}
+            isMapScriptLoaded={isMapScriptLoaded} // ✅ 추가 
             companyInfo={{
               name: companyName,
               ceo: ceoName,
@@ -493,6 +498,18 @@ function App() {
                         <input type="text" readOnly placeholder="주소 검색 버튼을 클릭하여 도로명 주소를 입력하세요" className="flex-1 px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl outline-none transition text-slate-700 font-medium" value={address} />
                         <button type="button" onClick={handleAddressSearch} className="px-6 bg-slate-800 text-white rounded-2xl font-black text-sm shadow-md hover:bg-orange-500 transition duration-200">주소 검색</button>
                       </div>
+                    </div>
+
+                    {/* ✅ [추가] 상세주소 입력란 */}
+                    <div className="flex flex-col gap-2 md:col-span-2">
+                      <label className="text-xs font-black text-slate-500 uppercase tracking-wider">상세주소</label>
+                      <input 
+                        type="text" 
+                        placeholder="예: 3층 다온씨엔이 (동, 호수, 층 등)" 
+                        className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl outline-none focus:bg-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition" 
+                        value={addressDetail} 
+                        onChange={e => setAddressDetail(e.target.value)} 
+                      />
                     </div>
 
                     <div className="flex flex-col gap-2 md:col-span-2 pt-4">
