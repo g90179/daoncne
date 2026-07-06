@@ -220,11 +220,11 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
             <table className="w-full text-left border-collapse text-sm">
               <thead>
                 <tr className="bg-neutral-50 text-neutral-400 font-medium text-xs border-b border-neutral-200">
-                  <th className="py-4 px-6 w-16 text-center">번호</th>
-                  <th className="py-4 px-6">제목</th>
-                  <th className="py-4 px-6 w-24 text-center">작성자</th>
-                  <th className="py-4 px-6 w-28 text-center">등록일</th>
-                  <th className="py-4 px-6 w-24 text-center">상태</th>
+                  <th className="py-4 px-4 w-16 text-center">번호</th>
+                  <th className="py-4 px-4">제목</th>
+                  <th className="py-4 px-4 w-28 text-center">작성자</th>
+                  <th className="py-4 px-4 w-32 text-center">등록일</th>
+                  <th className="py-4 px-4 w-28 text-center">상태</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 text-neutral-700">
@@ -235,19 +235,23 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
                 ) : (
                   boardList.map((post) => (
                     <tr key={post.id} className="hover:bg-neutral-50/50 cursor-pointer transition-colors" onClick={() => handleRowClick(post)}>
-                      <td className="py-4 px-6 text-center text-neutral-400 text-xs">{post.id}</td>
-                      <td className="py-4 px-6 font-medium text-neutral-900">
+                      <td className="py-4 px-4 text-center text-neutral-400 text-xs">{post.id}</td>
+                      <td className="py-4 px-4 font-medium text-neutral-900">
                         <div className="flex items-center gap-2">
                           {post.isSecret && (
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5 text-neutral-400"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>
                           )}
-                          <span className="truncate">{post.title}</span>
+                          <span className="truncate block max-w-[200px] sm:max-w-none">{post.title}</span>
                         </div>
                       </td>
-                      <td className="py-4 px-6 text-center text-xs text-neutral-500">{post.name?.charAt(0) + '*'}</td>
-                      <td className="py-4 px-6 text-center text-xs text-neutral-400">{post.createdAt?.split('T')[0]}</td>
-                      <td className="py-4 px-6 text-center">
-                        <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-md ${post.status === '답변완료' ? 'bg-neutral-900 text-white' : 'bg-neutral-100 text-neutral-500'}`}>{post.status}</span>
+                      {/* 🛡️ 작성자 이름이 길어져도 꺾이지 않도록 처리 */}
+                      <td className="py-4 px-4 text-center text-xs text-neutral-500 whitespace-nowrap">{post.name}</td>{/*post.name?.charAt(0) + '*'*/}
+                      <td className="py-4 px-4 text-center text-xs text-neutral-400 whitespace-nowrap">{post.createdAt?.split('T')[0]}</td>
+                      <td className="py-4 px-4 text-center">
+                        {/* 🛡️ 뱃지 내 텍스트 크기를 11px로 조절하고 줄바꿈을 완전 봉쇄(whitespace-nowrap) */}
+                        <span className={`inline-block text-[11px] font-bold px-2.5 py-1 rounded-md whitespace-nowrap ${post.status === '답변완료' ? 'bg-neutral-900 text-white' : 'bg-neutral-100 text-neutral-500'}`}>
+                          {post.status}
+                        </span>
                       </td>
                     </tr>
                   ))
