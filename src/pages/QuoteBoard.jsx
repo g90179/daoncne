@@ -15,8 +15,17 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
   const [pendingQuoteId, setPendingQuoteId] = useState(null);
   const [adminReplyInput, setAdminReplyInput] = useState('');
 
+  // src/pages/QuoteBoard.jsx 상단 state 정의 부분
   const [formData, setFormData] = useState({
-    company: '', name: '', phone: '', email: '', title: '', content: '', isSecret: true, password: ''
+    company: '', 
+    name: '', 
+    phone: '', 
+    email: '', 
+    title: '', 
+    content: '', 
+    isSecret: true, 
+    password: '',
+    privacyAgreement: false // 🔥 [추가] 초기값은 체크 해제 상태
   });
 
   const fetchQuotes = async () => {
@@ -83,10 +92,27 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
   // 🚀 신규 견적 제출
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // 🔥 [추가] 동의 예외 처리 검증
+    if (!formData.privacyAgreement) {
+      alert('개인정보 수집 및 이용에 동의하셔야 견적 문의 접수가 가능합니다.');
+      return;
+    }
+    
     try {
       await axios.post(`${API_URL}/quotes`, formData);
       alert('견적 문의가 정상적으로 접수되었습니다.');
-      setFormData({ company: '', name: '', phone: '', email: '', title: '', content: '', isSecret: true, password: '' });
+      setFormData({ 
+        company: '', 
+        name: '', 
+        phone: '', 
+        email: '', 
+        title: '', 
+        content: '', 
+        isSecret: true, 
+        password: '', 
+        privacyAgreement: false 
+      });
       setActiveTab('list');
     } catch (error) {
       alert('견적 접수 실패. 입력값을 확인해 주세요.');
@@ -267,6 +293,29 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
             </div>
             <div><label className="block text-xs font-semibold text-neutral-400 mb-2">문의 제목 *</label><input type="text" name="title" required value={formData.title} onChange={handleInputChange} placeholder="문의 사항 핵심 제목" className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3" /></div>
             <div><label className="block text-xs font-semibold text-neutral-400 mb-2">상세 내역 기재 *</label><textarea name="content" required rows={6} value={formData.content} onChange={handleInputChange} placeholder="필요 장비, 공사 종류 등 상세 기재" className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3 resize-none" /></div>
+            {/* 🔒 [추가된 영역] 개인정보 수집 및 이용동의 박스 */}
+            <div className="space-y-2 bg-neutral-50 p-4 rounded-xl border border-neutral-200/60 text-xs text-neutral-600">
+              <p className="font-bold text-neutral-800">[필수] 개인정보 수집 및 이용 동의</p>
+              <div className="h-20 overflow-y-auto bg-white p-3 rounded-lg border border-neutral-200 text-[11px] leading-relaxed text-neutral-500">
+                주식회사 다온씨엔이는 고객님의 견적 상담 및 문의 사항 처리를 위해 아래와 같이 개인정보를 수집하고 있습니다.<br />
+                • 수집 및 이용 항목: 회사명/기관명, 작성자 성함, 연락처, 이메일 주소<br />
+                • 수집 및 이용 목적: 견적 문의 내역 검토, 맞춤 상담 제공 및 결과 회신<br />
+                • 보유 및 이용 기간: <strong>문의 처리 완료 후 3년간 보관</strong> (고객 응대 및 이력 관리를 위함이며, 법령에 따른 보유 기간 외에는 즉시 파기됩니다.)
+              </div>
+              <div className="flex items-center gap-2 pt-1">
+                <input 
+                  type="checkbox" 
+                  id="privacyAgreement" 
+                  name="privacyAgreement" 
+                  checked={formData.privacyAgreement} 
+                  onChange={handleInputChange} 
+                  className="w-4 h-4 accent-neutral-950 cursor-pointer"
+                />
+                <label htmlFor="privacyAgreement" className="font-medium text-neutral-700 cursor-pointer select-none">
+                  개인정보 수집 및 이용약관에 동의합니다.
+                </label>
+              </div>
+            </div>
             <div className="pt-4 border-t border-neutral-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center gap-2"><input type="checkbox" id="isSecret" name="isSecret" checked={formData.isSecret} onChange={handleInputChange} className="w-4 h-4 accent-neutral-950" /><label htmlFor="isSecret" className="text-xs font-medium text-neutral-600">비밀글로 안전하게 보관 (추천)</label></div>
               {formData.isSecret && <input type="password" name="password" required={formData.isSecret} value={formData.password} onChange={handleInputChange} placeholder="비밀번호 설정 (4자리 이상)" className="w-full sm:w-52 text-xs border border-neutral-200 rounded-xl px-4 py-2.5" />}

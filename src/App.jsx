@@ -274,7 +274,7 @@ function App() {
         setCeoName(res.data.ceo || '');
         setBizNumber(res.data.bizNumber || '');
         setAddress(res.data.address || '');
-        setAddressDetail(res.data.addressDetail || ''); // ✅ 추가
+        setAddressDetail(res.data.addressDetail || ''); // 1. 여기서 변수에 값은 잘 들어가고 있었습니다!
         setPhone(res.data.phone || '');
         setCompanyEmail(res.data.email || '');
         setFaxNumber(res.data.fax || '');
@@ -392,6 +392,7 @@ function App() {
               ceo: ceoName,
               bizNumber,
               address,
+              addressDetail,
               phone,
               email: companyEmail,
               fax: faxNumber,
