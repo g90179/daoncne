@@ -16,7 +16,8 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
   const [adminReplyInput, setAdminReplyInput] = useState('');
 
   // 1. 상태 변수 구조 우회 포맷으로 변경
-  const [captchaInfo, setCaptchaInfo] = useState({ question: '', hash: '', expiry: 0 });
+  // 1. 상태 변수 스텔스 구조로 변경
+  const [captchaInfo, setCaptchaInfo] = useState({ question: '', cc: '', exp: 0 });
   const [captchaInput, setCaptchaInput] = useState('');
   const [isCaptchaRequired, setIsCaptchaRequired] = useState(false);
   const [pageLoadedAt, setPageLoadedAt] = useState(0);
@@ -32,7 +33,7 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
     isSecret: true, 
     password: '',
     privacyAgreement: false, // 🔥 [추가] 초기값은 체크 해제 상태
-    honeyPot: '' // 🍯 가짜 낚시 필드 초기화 상태 추가
+    email_confirm: '' // honeyPot 대신 email_confirm 선언
   });
 
   const fetchQuotes = async () => {
@@ -50,10 +51,11 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
   useEffect(() => { setActiveTab(initialTab); handleBackToList(); }, [initialTab]);
   useEffect(() => { if (activeTab === 'list') fetchQuotes(); }, [activeTab]);
   // 글쓰기 탭 진입 순간 타임스탬프 찍기
+  // 탭 진입 시 시간 기록
   useEffect(() => {
     if (activeTab === 'write') {
       setPageLoadedAt(Date.now());
-      setIsCaptchaRequired(false); // 새 글 쓸 때는 초기화
+      setIsCaptchaRequired(false);
       setCaptchaInput('');
     }
   }, [activeTab]);
@@ -64,12 +66,12 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
       const res = await axios.get(`${API_URL}/quotes/captcha`);
       setCaptchaInfo({ 
         question: res.data.question, 
-        hash: res.data.captchaHash, 
-        expiry: res.data.captchaExpiry 
+        cc: res.data.cc, 
+        exp: res.data.exp 
       });
       setIsCaptchaRequired(true);
     } catch (err) {
-      console.error('캡차 로드 실패', err);
+      console.error('인증 코드 로드 실패', err);
     }
   };
 
@@ -120,6 +122,7 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
   };
 
   // 3. handleSubmit 전송 부분 데이터 매핑 수정
+  // 3. handleSubmit 전송 및 에러 처리부 매핑 수정
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -131,17 +134,18 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
     try {
       const payload = {
         ...formData,
-        pageLoadedAt,
-        captchaAnswer: captchaInput,
-        captchaHash: captchaInfo.hash,       // 🛡️ 수정
-        captchaExpiry: captchaInfo.expiry   // 🛡️ 수정
+        plt: pageLoadedAt, // pageLoadedAt -> plt
+        ans: captchaInput, // captchaAnswer -> ans
+        cc: captchaInfo.cc, // captchaHash -> cc
+        exp: captchaInfo.exp // captchaExpiry -> exp
       };
 
       await axios.post(`${API_URL}/quotes`, payload);
       alert('견적 문의가 정상적으로 접수되었습니다.');
-      setFormData({ company: '', name: '', phone: '', email: '', title: '', content: '', isSecret: true, password: '', privacyAgreement: false, honeyPot: '' });
+      setFormData({ company: '', name: '', phone: '', email: '', title: '', content: '', isSecret: true, password: '', privacyAgreement: false, email_confirm: '' });
       setActiveTab('list');
     } catch (error) {
+      // 백엔드 시그널 매칭
       if (error.response && error.response.status === 403 && error.response.data.message === 'CAPTCHA_REQUIRED') {
         alert('보안 검증이 필요합니다. 아래에 나타난 자동 등록 방지 코드를 입력해 주세요.');
         fetchCaptcha();
@@ -327,15 +331,15 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
             <div><label className="block text-xs font-semibold text-neutral-400 mb-2">상세 내역 기재 *</label><textarea name="content" required rows={6} value={formData.content} onChange={handleInputChange} placeholder="필요 장비, 공사 종류 등 상세 기재" className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3 resize-none" /></div>
 
             {/* 1. 🍯 허니팟 필드 (사람 눈에는 완벽히 숨김 처리, 로봇 유인용) */}
+            {/* 숨김 처리된 허니팟 인풋 이름 변경 */}
             <div className="hidden" aria-hidden="true">
               <input 
                 type="text" 
-                name="honeyPot" 
-                value={formData.honeyPot} 
+                name="email_confirm" // 🛡️ 변장 완료
+                value={formData.email_confirm} 
                 onChange={handleInputChange} 
                 tabIndex="-1" 
                 autoComplete="off" 
-                placeholder="If you are human, leave this blank" 
               />
             </div>
             
