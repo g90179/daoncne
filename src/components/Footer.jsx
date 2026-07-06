@@ -71,7 +71,6 @@ const Footer = ({ companyInfo, isMapScriptLoaded, onQuoteClick }) => {
               <InfoRow label="상호" value={companyInfo?.name} />
               <InfoRow label="대표자" value={companyInfo?.ceo} />
               <InfoRow label="사업자등록번호" value={companyInfo?.bizNumber} />
-              <InfoRow label="전화" value={companyInfo?.phone} />
               <InfoRow label="팩스" value={companyInfo?.fax} />
               <InfoRow label="이메일" value={companyInfo?.email} />
               <div className="sm:col-span-2">
@@ -90,18 +89,29 @@ const Footer = ({ companyInfo, isMapScriptLoaded, onQuoteClick }) => {
           {/* ➖ 중앙 영역: 반응형 구분선 */}
           <div className="h-px w-full md:w-px md:h-auto md:self-stretch bg-neutral-200" />
 
-          {/* 👉 우측 영역: 견적문의하기 버튼 */}
-          <div className="w-full md:w-auto flex justify-center items-center shrink-0">
+          {/* 👉 우측 영역: 견적문의하기 버튼 & 강조된 전화번호 */}
+          <div className="w-full md:w-auto flex flex-col items-stretch md:items-end justify-center shrink-0 gap-3 min-w-[140px]">
             <button
               type="button"
               onClick={() => {
-                // ✅ 프롭스로 전달받은 네비게이션 함수가 존재하면 실행
                 if (onQuoteClick) onQuoteClick();
               }}
-              className="w-full md:w-auto text-xs font-bold tracking-wide border border-neutral-900 px-5 py-3 rounded-xl hover:bg-neutral-900 hover:text-white transition-all duration-200 whitespace-nowrap"
+              className="w-full text-center text-xs font-bold tracking-wider bg-blue-400 hover:bg-blue-500 text-white px-5 py-3 rounded-md shadow-sm transition-all duration-200 whitespace-nowrap"
             >
               견적문의하기
             </button>
+
+            {/* 📞 버튼 아래로 배치하여 강조한 전화번호 레이아웃 */}
+            {companyInfo?.phone && (
+              <div className="text-center md:text-right space-y-0.5 px-0.5 w-full">
+                <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest block">
+                  CUSTOMER CENTER
+                </span>
+                <span className="text-base font-extrabold text-neutral-900 tracking-wide block">
+                  {companyInfo.phone}
+                </span>
+              </div>
+            )}
           </div>
           
         </div>
