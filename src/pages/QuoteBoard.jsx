@@ -15,6 +15,11 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
   const [pendingQuoteId, setPendingQuoteId] = useState(null);
   const [adminReplyInput, setAdminReplyInput] = useState('');
 
+  const [captchaInfo, setCaptchaInfo] = useState({ question: '', token: '' });
+  const [captchaInput, setCaptchaInput] = useState('');
+  const [isCaptchaRequired, setIsCaptchaRequired] = useState(false); // 🔥 캡차 강제 오픈 스위치
+  const [pageLoadedAt, setPageLoadedAt] = useState(0);
+
   // src/pages/QuoteBoard.jsx 상단 state 정의 부분
   const [formData, setFormData] = useState({
     company: '', 
@@ -25,7 +30,8 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
     content: '', 
     isSecret: true, 
     password: '',
-    privacyAgreement: false // 🔥 [추가] 초기값은 체크 해제 상태
+    privacyAgreement: false, // 🔥 [추가] 초기값은 체크 해제 상태
+    honeyPot: '' // 🍯 가짜 낚시 필드 초기화 상태 추가
   });
 
   const fetchQuotes = async () => {
@@ -42,6 +48,24 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
 
   useEffect(() => { setActiveTab(initialTab); handleBackToList(); }, [initialTab]);
   useEffect(() => { if (activeTab === 'list') fetchQuotes(); }, [activeTab]);
+  // 글쓰기 탭 진입 순간 타임스탬프 찍기
+  useEffect(() => {
+    if (activeTab === 'write') {
+      setPageLoadedAt(Date.now());
+      setIsCaptchaRequired(false); // 새 글 쓸 때는 초기화
+      setCaptchaInput('');
+    }
+  }, [activeTab]);
+
+  const fetchCaptcha = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/quotes/captcha`);
+      setCaptchaInfo({ question: res.data.question, token: res.data.captchaToken });
+      setIsCaptchaRequired(true); // 🚨 의심 피드백을 받으면 활성화 스위치 ON
+    } catch (err) {
+      console.error('캡차 로드 실패', err);
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -100,22 +124,27 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
     }
     
     try {
-      await axios.post(`${API_URL}/quotes`, formData);
+      const payload = {
+        ...formData,
+        pageLoadedAt, // 언제 글쓰기 창을 켰는지 시간 정보 동봉
+        captchaAnswer: captchaInput,
+        captchaToken: captchaInfo.token
+      };
+
+      await axios.post(`${API_URL}/quotes`, payload);
       alert('견적 문의가 정상적으로 접수되었습니다.');
-      setFormData({ 
-        company: '', 
-        name: '', 
-        phone: '', 
-        email: '', 
-        title: '', 
-        content: '', 
-        isSecret: true, 
-        password: '', 
-        privacyAgreement: false 
-      });
+      
+      // 정상 리셋
+      setFormData({ company: '', name: '', phone: '', email: '', title: '', content: '', isSecret: true, password: '', privacyAgreement: false, honeyPot: '' });
       setActiveTab('list');
     } catch (error) {
-      alert('견적 접수 실패. 입력값을 확인해 주세요.');
+      // 🤖 백엔드가 "너 로봇 같아, 문제 풀어!" 라고 보낸 경우 (403 Forbidden)
+      if (error.response && error.response.status === 403 && error.response.data.message === 'CAPTCHA_REQUIRED') {
+        alert('보안 검증이 필요합니다. 아래에 나타난 자동 등록 방지 코드를 입력해 주세요.');
+        fetchCaptcha(); // 수학 문제 호출
+      } else {
+        alert(error.response?.data?.message || '접수 실패');
+      }
     }
   };
 
@@ -293,6 +322,20 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
             </div>
             <div><label className="block text-xs font-semibold text-neutral-400 mb-2">문의 제목 *</label><input type="text" name="title" required value={formData.title} onChange={handleInputChange} placeholder="문의 사항 핵심 제목" className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3" /></div>
             <div><label className="block text-xs font-semibold text-neutral-400 mb-2">상세 내역 기재 *</label><textarea name="content" required rows={6} value={formData.content} onChange={handleInputChange} placeholder="필요 장비, 공사 종류 등 상세 기재" className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3 resize-none" /></div>
+
+            {/* 1. 🍯 허니팟 필드 (사람 눈에는 완벽히 숨김 처리, 로봇 유인용) */}
+            <div className="hidden" aria-hidden="true">
+              <input 
+                type="text" 
+                name="honeyPot" 
+                value={formData.honeyPot} 
+                onChange={handleInputChange} 
+                tabIndex="-1" 
+                autoComplete="off" 
+                placeholder="If you are human, leave this blank" 
+              />
+            </div>
+            
             {/* 🔒 [추가된 영역] 개인정보 수집 및 이용동의 박스 */}
             <div className="space-y-2 bg-neutral-50 p-4 rounded-xl border border-neutral-200/60 text-xs text-neutral-600">
               <p className="font-bold text-neutral-800">[필수] 개인정보 수집 및 이용 동의</p>
@@ -316,6 +359,24 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
                 </label>
               </div>
             </div>
+
+            {/* 2. 🤖 조건부 자동 등록 방지 인증 (isCaptchaRequired 가 true 일 때만 렌더링) */}
+            {isCaptchaRequired && (
+              <div className="bg-blue-50/40 p-4 rounded-xl border border-blue-200/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fadeIn">
+                <div className="space-y-0.5">
+                  <p className="text-xs font-bold text-blue-950">보안 인증 추가 *</p>
+                  <p className="text-[11px] text-neutral-400">빠른 작성 속도로 인해 일시적 제한이 걸렸습니다. 사칙연산을 풀어주세요.</p>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <div className="bg-neutral-900 text-neutral-100 font-mono font-bold text-sm px-4 py-2.5 rounded-xl min-w-[85px] text-center select-none shadow-inner">
+                    {captchaInfo.question || '로드 중...'}
+                  </div>
+                  <button type="button" onClick={fetchCaptcha} className="p-2.5 text-neutral-400 hover:text-neutral-600 border bg-white rounded-xl shadow-sm"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg></button>
+                  <input type="text" required placeholder="정답" value={captchaInput} onChange={(e) => setCaptchaInput(e.target.value)} className="w-24 text-sm border border-blue-200 rounded-xl px-3 py-2.5 text-center font-bold text-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-900 bg-white" />
+                </div>
+              </div>
+            )}
+
             <div className="pt-4 border-t border-neutral-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center gap-2"><input type="checkbox" id="isSecret" name="isSecret" checked={formData.isSecret} onChange={handleInputChange} className="w-4 h-4 accent-neutral-950" /><label htmlFor="isSecret" className="text-xs font-medium text-neutral-600">비밀글로 안전하게 보관 (추천)</label></div>
               {formData.isSecret && <input type="password" name="password" required={formData.isSecret} value={formData.password} onChange={handleInputChange} placeholder="비밀번호 설정 (4자리 이상)" className="w-full sm:w-52 text-xs border border-neutral-200 rounded-xl px-4 py-2.5" />}
