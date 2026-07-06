@@ -15,9 +15,10 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
   const [pendingQuoteId, setPendingQuoteId] = useState(null);
   const [adminReplyInput, setAdminReplyInput] = useState('');
 
-  const [captchaInfo, setCaptchaInfo] = useState({ question: '', token: '' });
+  // 1. 상태 변수 구조 우회 포맷으로 변경
+  const [captchaInfo, setCaptchaInfo] = useState({ question: '', hash: '', expiry: 0 });
   const [captchaInput, setCaptchaInput] = useState('');
-  const [isCaptchaRequired, setIsCaptchaRequired] = useState(false); // 🔥 캡차 강제 오픈 스위치
+  const [isCaptchaRequired, setIsCaptchaRequired] = useState(false);
   const [pageLoadedAt, setPageLoadedAt] = useState(0);
 
   // src/pages/QuoteBoard.jsx 상단 state 정의 부분
@@ -57,11 +58,16 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
     }
   }, [activeTab]);
 
+  // 2. API 호출 함수 수정
   const fetchCaptcha = async () => {
     try {
       const res = await axios.get(`${API_URL}/quotes/captcha`);
-      setCaptchaInfo({ question: res.data.question, token: res.data.captchaToken });
-      setIsCaptchaRequired(true); // 🚨 의심 피드백을 받으면 활성화 스위치 ON
+      setCaptchaInfo({ 
+        question: res.data.question, 
+        hash: res.data.captchaHash, 
+        expiry: res.data.captchaExpiry 
+      });
+      setIsCaptchaRequired(true);
     } catch (err) {
       console.error('캡차 로드 실패', err);
     }
@@ -113,35 +119,32 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
     }
   };
 
-  // 🚀 신규 견적 제출
+  // 3. handleSubmit 전송 부분 데이터 매핑 수정
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // 🔥 [추가] 동의 예외 처리 검증
     if (!formData.privacyAgreement) {
       alert('개인정보 수집 및 이용에 동의하셔야 견적 문의 접수가 가능합니다.');
       return;
     }
-    
+
     try {
       const payload = {
         ...formData,
-        pageLoadedAt, // 언제 글쓰기 창을 켰는지 시간 정보 동봉
+        pageLoadedAt,
         captchaAnswer: captchaInput,
-        captchaToken: captchaInfo.token
+        captchaHash: captchaInfo.hash,       // 🛡️ 수정
+        captchaExpiry: captchaInfo.expiry   // 🛡️ 수정
       };
 
       await axios.post(`${API_URL}/quotes`, payload);
       alert('견적 문의가 정상적으로 접수되었습니다.');
-      
-      // 정상 리셋
       setFormData({ company: '', name: '', phone: '', email: '', title: '', content: '', isSecret: true, password: '', privacyAgreement: false, honeyPot: '' });
       setActiveTab('list');
     } catch (error) {
-      // 🤖 백엔드가 "너 로봇 같아, 문제 풀어!" 라고 보낸 경우 (403 Forbidden)
       if (error.response && error.response.status === 403 && error.response.data.message === 'CAPTCHA_REQUIRED') {
         alert('보안 검증이 필요합니다. 아래에 나타난 자동 등록 방지 코드를 입력해 주세요.');
-        fetchCaptcha(); // 수학 문제 호출
+        fetchCaptcha();
       } else {
         alert(error.response?.data?.message || '접수 실패');
       }
