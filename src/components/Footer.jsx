@@ -1,8 +1,8 @@
 // daon-frontend\src\components\Footer.jsx
 import React, { useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom'; // 🔑 리액트 라우터 링크 임포트
 
-// ✅ 대지(onQuoteClick) 프롭스 추가
-const Footer = ({ companyInfo, isMapScriptLoaded, onQuoteClick }) => {
+const Footer = ({ companyInfo, isMapScriptLoaded }) => {
   const mapContainerRef = useRef(null);
   const hasCoords = !!(companyInfo?.lat && companyInfo?.lng);
 
@@ -90,17 +90,17 @@ const Footer = ({ companyInfo, isMapScriptLoaded, onQuoteClick }) => {
           {/* ➖ 중앙 영역: 반응형 구분선 */}
           <div className="h-px w-full md:w-px md:h-auto md:self-stretch bg-neutral-200" />
 
-          {/* 👉 우측 영역: 견적문의하기 버튼 & 강조된 전화번호 */}
+          {/* 👉 우측 영역: 견적문의하기 링크 버튼 & 강조된 전화번호 */}
           <div className="w-full md:w-auto flex flex-col items-stretch md:items-end justify-center shrink-0 gap-3 min-w-[140px]">
-            <button
-              type="button"
-              onClick={() => {
-                if (onQuoteClick) onQuoteClick();
-              }}
-              className="w-full text-center text-xs font-bold tracking-wider bg-blue-400 hover:bg-blue-500 text-white px-5 py-3 rounded-md shadow-sm transition-all duration-200 whitespace-nowrap"
+            
+            {/* 🔑 [핵심 수정] 일반 button 태그를 리액트 라우터 전용 <Link> 태그로 전면 교체했습니다. */}
+            <Link
+              to="/quotes"
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="w-full text-center text-xs font-bold tracking-wider bg-blue-400 hover:bg-blue-500 text-white px-5 py-3 rounded-md shadow-sm transition-all duration-200 whitespace-nowrap block"
             >
               견적문의하기
-            </button>
+            </Link>
 
             {/* 📞 버튼 아래로 배치하여 강조한 전화번호 레이아웃 */}
             {companyInfo?.phone && (

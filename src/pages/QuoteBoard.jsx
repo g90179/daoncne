@@ -1,3 +1,4 @@
+// daon-frontend\src\pages\QuoteBoard.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_URL } from '../config';
@@ -334,7 +335,7 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
         {!selectedQuote && activeTab === 'write' && (
           <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-neutral-200/60 shadow-sm p-6 md:p-8 space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div><label className="block text-xs font-semibold text-neutral-400 mb-2">회사명 / 기관명</label><input type="text" name="company" value={formData.company} onChange={handleInputChange} placeholder="주식회사 다온" className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3" /></div>
+              <div><label className="block text-xs font-semibold text-neutral-400 mb-2">회사명 / 기관명</label><input type="text" name="company" value={formData.company} onChange={handleInputChange} placeholder="주식회사 다온씨엔이" className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3" /></div>
               <div><label className="block text-xs font-semibold text-neutral-400 mb-2">작성자 성함 *</label><input type="text" name="name" required value={formData.name} onChange={handleInputChange} placeholder="홍길동" className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3" /></div>
               <div><label className="block text-xs font-semibold text-neutral-400 mb-2">연락처 *</label><input type="tel" name="phone" required value={formData.phone} onChange={handleInputChange} placeholder="010-0000-0000" className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3" /></div>
               <div><label className="block text-xs font-semibold text-neutral-400 mb-2">이메일 주소 *</label><input type="email" name="email" required value={formData.email} onChange={handleInputChange} placeholder="example@daoncne.com" className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3" /></div>

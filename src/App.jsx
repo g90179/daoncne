@@ -1,24 +1,28 @@
-// daon-frontend\src\App.jsx
+// daon-frontend\src\App.jsx 상단부
+
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Layout from './components/Layout';
 import HomeView from './components/HomeView';
+import QuoteBoard from './pages/QuoteBoard';
 import AdminPostEditor from './components/AdminPostEditor';
 import AdminPostList from './components/AdminPostList';
-import MainSlideAdmin from './pages/admin/MainSlideAdmin'; // 🎬 [추가] 슬라이드 어드민 컴포넌트 임포트
+import MainSlideAdmin from './pages/admin/MainSlideAdmin'; 
+
+// 🔴 이 부분을 아래 2줄로 완전히 교체해 주세요! (react-native-axios 제거)
+import axios from 'axios';
 import { API_URL } from './config';
 import 'ckeditor5/ckeditor5.css';
 
-
-// ⚙️ 환경 변수 로드 단계
 const KAKAO_MAP_KEY = 
   (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_KAKAO_MAP_KEY) ||
   (typeof process !== 'undefined' && process.env && process.env.REACT_APP_KAKAO_MAP_KEY) ||
-  ""; 
+  "";
 
-// ✅ [추가] 진단 대시보드 접근이 허용되는 특정 계정
 const DEBUG_ALLOWED_EMAIL = 'hello.g901@kakao.com';
 
 function App() {
+  const axiosInstance = axios; 
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
   const [adminView, setAdminView] = useState('home'); 
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -33,7 +37,6 @@ function App() {
   const [newPassword, setNewPassword] = useState('');
   const [addressDetail, setAddressDetail] = useState('');
 
-  // ✅ [추가] 로그인한 계정의 이메일을 기억해서 진단 대시보드 노출 여부를 판단
   const [loggedInEmail, setLoggedInEmail] = useState(localStorage.getItem('loggedInEmail') || '');
 
   const [companyName, setCompanyName] = useState('');
@@ -60,7 +63,6 @@ function App() {
     containerHeightValid: '대기 중'
   });
 
-  // ✅ [추가] 현재 로그인한 계정이 진단 대시보드 접근 허용 계정인지 여부
   const isSuperAdmin = loggedInEmail === DEBUG_ALLOWED_EMAIL;
 
   const logDebug = (message, type = 'info') => {
@@ -211,7 +213,7 @@ function App() {
     if (isLoggedIn) {
       fetchUsers();
     }
-    fetchCompanyInfo(); // 🔑 로그인 조건문 {} 밖으로 탈출시켜 로그인 여부와 상관없이 무조건 회사 정보를 불러오게 만듭니다!
+    fetchCompanyInfo(); 
     fetchPosts();
   }, [isLoggedIn, activeTab]);
 
@@ -260,22 +262,22 @@ function App() {
     }
   }, [adminView, address, isMapScriptLoaded]);
 
-  const fetchUsers = async () => { try { const res = await axios.get(`${API_URL}/users`); setUsers(res.data); } catch (e) {} };
+  const fetchUsers = async () => { try { const res = await axiosInstance.get(`${API_URL}/users`); setUsers(res.data); } catch (e) {} };
   const fetchPosts = async () => {
     const categoryParam = activeTab === '전체' ? '' : activeTab;
-    const response = await axios.get(`${API_URL}/posts?category=${categoryParam}`);
+    const response = await axiosInstance.get(`${API_URL}/posts?category=${categoryParam}`);
     setPosts(response.data);
   };
   
   const fetchCompanyInfo = async () => {
     try {
-      const res = await axios.get(`${API_URL}/company`);
+      const res = await axiosInstance.get(`${API_URL}/company`);
       if (res.data) {
         setCompanyName(res.data.name || '');
         setCeoName(res.data.ceo || '');
         setBizNumber(res.data.bizNumber || '');
         setAddress(res.data.address || '');
-        setAddressDetail(res.data.addressDetail || ''); // 1. 여기서 변수에 값은 잘 들어가고 있었습니다!
+        setAddressDetail(res.data.addressDetail || ''); 
         setPhone(res.data.phone || '');
         setCompanyEmail(res.data.email || '');
         setFaxNumber(res.data.fax || '');
@@ -303,12 +305,12 @@ function App() {
 
   const handleSaveCompanyInfo = async () => {
     try {
-      await axios.post(`${API_URL}/company`, {
+      await axiosInstance.post(`${API_URL}/company`, {
         name: companyName,
         ceo: ceoName,
         bizNumber: bizNumber,
         address: address,
-        addressDetail: addressDetail, // ✅ 추가
+        addressDetail: addressDetail, 
         phone: phone,
         email: companyEmail,
         fax: faxNumber,
@@ -321,311 +323,353 @@ function App() {
     }
   };
 
+  // ─── 로그인 처리 함수 수정 ───
   const handleLogin = async () => {
     try {
-      const res = await axios.post(`${API_URL}/auth/login`, { email, password });
+      const res = await axiosInstance.post(`${API_URL}/auth/login`, { email, password });
       localStorage.setItem('token', res.data.access_token);
       localStorage.setItem('loggedInEmail', email);
       setLoggedInEmail(email);
-      setIsLoggedIn(true); setAdminView('posts'); setShowLoginModal(false);
+      setIsLoggedIn(true); 
+      setAdminView('posts'); 
+      setShowLoginModal(false);
+      
+      window.location.href = '/admin'; // 🔑 로그인 완료 즉시 어드민 페이지로 이동
     } catch (e) { alert('로그인 실패'); }
   };
   
+  // ─── 로그아웃 처리 함수 수정 ───
   const handleLogout = () => { 
     localStorage.removeItem('token'); 
     localStorage.removeItem('loggedInEmail');
     setLoggedInEmail('');
-    setIsLoggedIn(false); setAdminView('home'); 
+    setIsLoggedIn(false); 
+    setAdminView('home'); 
+    
+    window.location.href = '/'; // 🔑 로그아웃 즉시 메인 홈으로 튕겨냅니다.
   };
   
   const handleCreateUser = async () => {
     if (!newEmail || !newPassword) { alert('이메일과 비밀번호를 모두 입력해 주세요.'); return; }
     try {
-      await axios.post(`${API_URL}/users`, { email: newEmail, password: newPassword });
+      await axiosInstance.post(`${API_URL}/users`, { email: newEmail, password: newPassword });
       alert('계정이 성공적으로 생성되었습니다.');
       setNewEmail(''); setNewPassword(''); fetchUsers();
     } catch (e) { alert('계정 생성에 실패했습니다.'); }
   };
 
-  // 🧱 어드민 전용 내비게이션 사이드바
+  // ─── 내부에 선언된 Sidebar 컴포넌트 수정 ───
   const Sidebar = () => (
-    <aside className="w-64 bg-slate-900 text-white flex flex-col h-screen sticky top-0 shadow-2xl">
+    <aside className="w-64 bg-slate-900 text-white flex flex-col h-screen sticky top-0 shadow-2xl z-[100]">
       <div className="p-8"><h2 className="text-xl font-black text-orange-500 uppercase tracking-tighter">Daon CNE</h2></div>
       <nav className="flex-1 px-4 space-y-2">
-        <button onClick={() => setAdminView('home')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${adminView === 'home' ? 'bg-slate-700' : 'text-slate-400 hover:bg-slate-800'}`}>🏠 홈페이지 보기</button>
+        {/* 🔑 버튼 클릭 시 메인 루트 주소('/')로 확실하게 이동시켜 줍니다. */}
+        <button 
+          onClick={() => {
+            setAdminView('home');
+            window.location.href = '/'; 
+          }} 
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${adminView === 'home' ? 'bg-slate-700' : 'text-slate-400 hover:bg-slate-800'}`}
+        >
+          🏠 홈페이지 보기
+        </button>
         <div className="h-px bg-slate-800 my-4 mx-2" />
         <button onClick={() => setAdminView('posts')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${adminView === 'posts' ? 'bg-orange-500 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>📝 콘텐츠 관리</button>
-        {/* 🎬 [추가] 사이드바 슬라이드 제어 인터페이스 링크 소생 */}
         <button onClick={() => setAdminView('slides')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${adminView === 'slides' ? 'bg-orange-500 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>🎬 메인 슬라이드 관리</button>
-        <button onClick={() => setAdminView('users')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${adminView === 'users' ? 'bg-orange-500 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>👤 계정 관리</button>
         <button onClick={() => setAdminView('company')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${adminView === 'company' ? 'bg-orange-500 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>🏢 회사 정보 관리</button>
+        <button onClick={() => setAdminView('users')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${adminView === 'users' ? 'bg-orange-500 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>👤 계정 관리</button>
       </nav>
       <div className="p-6 border-t border-slate-800"><button onClick={handleLogout} className="w-full py-3 text-red-400 font-bold hover:bg-red-500/10 rounded-xl transition">로그아웃</button></div>
     </aside>
   );
 
+  const parsedCompanyInfo = {
+    name: companyName,
+    ceo: ceoName,
+    bizNumber,
+    address,
+    addressDetail,
+    phone,
+    email: companyEmail,
+    fax: faxNumber,
+    lat,
+    lng
+  };
+
   return (
-    <div className="flex min-h-screen bg-slate-50 font-sans relative">
-      {isLoggedIn && adminView !== 'home' && <Sidebar />}
+    <BrowserRouter>
+      <div className={`min-h-screen font-sans relative ${adminView !== 'home' ? 'flex bg-slate-50' : 'bg-white'}`}>
+        {isLoggedIn && adminView !== 'home' && <Sidebar />}
 
-      <div className="flex-1 overflow-x-hidden">
-        {adminView === 'home' ? (
-          <HomeView 
-            posts={posts}
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            isLoggedIn={isLoggedIn}
-            setAdminView={setAdminView}
-            setShowLoginModal={setShowLoginModal}
-            selectedPost={selectedPost}
-            setSelectedPost={setSelectedPost}
-            isMapScriptLoaded={isMapScriptLoaded} // ✅ 추가 
-            companyInfo={{
-              name: companyName,
-              ceo: ceoName,
-              bizNumber,
-              address,
-              addressDetail,
-              phone,
-              email: companyEmail,
-              fax: faxNumber,
-              lat,
-              lng
-            }}
-          />
-        ) : (
-          <main className="p-12 relative">
-            {adminView === 'posts' && (
-              <div className="max-w-12xl mx-auto space-y-12 animate-fadeIn">
-                <header className="flex justify-between items-end">
-                  <div><h1 className="text-3xl font-black text-slate-800 tracking-tighter">콘텐츠 관리</h1><p className="text-slate-400 mt-1 uppercase text-xs font-bold">Manage your projects & equipment</p></div>
-                  <div className="bg-white p-1 rounded-2xl shadow-sm border flex gap-1">
-                    {['현장사진', '공사실적', '보유장비'].map(tab => (
-                      <button key={tab} onClick={() => setActiveTab(tab)} className={`px-6 py-2 rounded-xl text-xs font-bold transition ${activeTab === tab ? 'bg-slate-900 text-white' : 'text-slate-400'}`}>{tab}</button>
-                    ))}
-                  </div>
-                </header>
-                <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
-                  <div className="xl:col-span-8"><AdminPostEditor editingPost={editingPost} onCancel={() => setEditingPost(null)} onSuccess={() => { setEditingPost(null); fetchPosts(); }} /></div>
-                  <div className="xl:col-span-4 h-[900px] overflow-y-auto pr-2 custom-scrollbar">
-                    <AdminPostList posts={posts} onEdit={(post) => { setEditingPost(post); window.scrollTo({ top: 0, behavior: 'smooth' }); }} onDelete={async (id) => { if(confirm('삭제하시겠습니까?')) { await axios.delete(`${API_URL}/posts/${id}`); fetchPosts(); } }} />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 🎬 [추가] adminView가 'slides' 일 때 메인 슬라이드 어드민 뷰를 로드해 주는 파이프라인 */}
-            {adminView === 'slides' && (
-              <div className="animate-fadeIn">
-                <MainSlideAdmin />
-              </div>
-            )}
+        <div className="flex-1 overflow-x-hidden">
+          <Routes>
             
-            {adminView === 'users' && (
-              <div className="max-w-4xl mx-auto space-y-12 animate-fadeIn">
-                <h1 className="text-3xl font-black text-slate-800">계정 관리</h1>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="bg-white p-10 rounded-[2.5rem] shadow-xl border"><h3 className="font-bold mb-6 text-slate-800">👤 신규 계정 등록</h3>
-                    <div className="space-y-4">
-                      <input type="text" placeholder="Email" className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" value={newEmail} onChange={e => setNewEmail(e.target.value)} />
-                      <input type="password" placeholder="Password" className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
-                      <button onClick={handleCreateUser} className="w-full bg-blue-900 text-white py-4 rounded-2xl font-black hover:bg-blue-800 transition shadow-lg">계정 생성</button>
-                    </div>
-                  </div>
-                  <div className="bg-white rounded-[2.5rem] shadow-xl border overflow-hidden">
-                    <div className="p-6 bg-gray-50 border-b font-bold text-xs uppercase text-gray-400 tracking-widest text-center">Admin List</div>
-                    <div className="divide-y h-[400px] overflow-y-auto">
-                      {users.map(u => (
-                        <div key={u.id} className="p-6 flex justify-between items-center hover:bg-gray-50 transition">
-                          <p className="font-bold text-slate-700">{u.email}</p>
-                          <button onClick={async () => { if(confirm('삭제?')) { await axios.delete(`${API_URL}/users/${u.id}`); fetchUsers(); } }} className="text-red-400 font-bold text-xs">삭제</button>
+            {/* 🏠 Route Group: 공통 레이아웃 구조가 적용되는 유저 페이지 단락 */}
+            <Route element={
+              <Layout 
+                companyInfo={parsedCompanyInfo}
+                isMapScriptLoaded={isMapScriptLoaded}
+                isLoggedIn={isLoggedIn}
+                setAdminView={setAdminView}
+                setShowLoginModal={setShowLoginModal}
+              />
+            }>
+              {/* 메인 홈 화면 */}
+              <Route 
+                path="/" 
+                element={
+                  <HomeView 
+                    posts={posts}
+                    activeTab={activeTab}
+                    setActiveTab={setActiveTab}
+                    selectedPost={selectedPost}
+                    setSelectedPost={setSelectedPost}
+                  />
+                } 
+              />
+              
+              {/* 견적문의 전용 독립 페이지 */}
+              <Route 
+                path="/quotes" 
+                element={<QuoteBoard isLoggedIn={isLoggedIn} />} 
+              />
+            </Route>
+
+            {/* 🛠️ Route C: 기존 백엔드 어드민 제어 타워 독립 가동 */}
+            <Route 
+              path="/admin" 
+              element={
+                <main className="p-12 relative w-full">
+                  {adminView === 'posts' && (
+                    <div className="max-w-12xl mx-auto space-y-12 animate-fadeIn">
+                      <header className="flex justify-between items-end">
+                        <div><h1 className="text-3xl font-black text-slate-800 tracking-tighter">콘텐츠 관리</h1><p className="text-slate-400 mt-1 uppercase text-xs font-bold">Manage your projects & equipment</p></div>
+                        <div className="bg-white p-1 rounded-2xl shadow-sm border flex gap-1">
+                          {['현장사진', '공사실적', '보유장비'].map(tab => (
+                            <button key={tab} onClick={() => setActiveTab(tab)} className={`px-6 py-2 rounded-xl text-xs font-bold transition ${activeTab === tab ? 'bg-slate-900 text-white' : 'text-slate-400'}`}>{tab}</button>
+                          ))}
                         </div>
-                      ))}
+                      </header>
+                      <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
+                        <div className="xl:col-span-8"><AdminPostEditor editingPost={editingPost} onCancel={() => setEditingPost(null)} onSuccess={() => { setEditingPost(null); fetchPosts(); }} /></div>
+                        <div className="xl:col-span-4 h-[900px] overflow-y-auto pr-2 custom-scrollbar">
+                          <AdminPostList posts={posts} onEdit={(post) => { setEditingPost(post); window.scrollTo({ top: 0, behavior: 'smooth' }); }} onDelete={async (id) => { if(confirm('삭제하시겠습니까?')) { await axiosInstance.delete(`${API_URL}/posts/${id}`); fetchPosts(); } }} />
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {adminView === 'company' && (
-              <div className="max-w-4xl mx-auto space-y-12 animate-fadeIn">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h1 className="text-3xl font-black text-slate-800 tracking-tighter">회사 정보 관리</h1>
-                    <p className="text-slate-400 mt-1 uppercase text-xs font-bold">Manage company settings and metadata</p>
-                  </div>
-                  {/* ✅ [수정] isSuperAdmin일 때만 진단 버튼 노출 */}
-                  {isSuperAdmin && (
-                    <button 
-                      type="button" 
-                      onClick={() => { setShowDebugPanel(!showDebugPanel); runDiagnostics(); }}
-                      className="bg-red-500 text-white px-5 py-2.5 rounded-2xl font-bold text-xs shadow-lg hover:bg-red-600 transition flex items-center gap-1.5"
-                    >
-                      🚨 카카오맵 실시간 자가진단기 {showDebugPanel ? '닫기' : '켜기'}
-                    </button>
                   )}
+
+                  {adminView === 'slides' && (
+                    <div className="animate-fadeIn">
+                      <MainSlideAdmin />
+                    </div>
+                  )}
+                  
+                  {adminView === 'users' && (
+                    <div className="max-w-4xl mx-auto space-y-12 animate-fadeIn">
+                      <h1 className="text-3xl font-black text-slate-800">계정 관리</h1>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="bg-white p-10 rounded-[2.5rem] shadow-xl border"><h3 className="font-bold mb-6 text-slate-800">👤 신규 계정 등록</h3>
+                          <div className="space-y-4">
+                            <input type="text" placeholder="Email" className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" value={newEmail} onChange={e => setNewEmail(e.target.value)} />
+                            <input type="password" placeholder="Password" className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                            <button onClick={handleCreateUser} className="w-full bg-blue-900 text-white py-4 rounded-2xl font-black hover:bg-blue-800 transition shadow-lg">계정 생성</button>
+                          </div>
+                        </div>
+                        <div className="bg-white rounded-[2.5rem] shadow-xl border overflow-hidden">
+                          <div className="p-6 bg-gray-50 border-b font-bold text-xs uppercase text-gray-400 tracking-widest text-center">Admin List</div>
+                          <div className="divide-y h-[400px] overflow-y-auto">
+                            {users.map(u => (
+                              <div key={u.id} className="p-6 flex justify-between items-center hover:bg-gray-50 transition">
+                                <p className="font-bold text-slate-700">{u.email}</p>
+                                <button onClick={async () => { if(confirm('삭제?')) { await axiosInstance.delete(`${API_URL}/users/${u.id}`); fetchUsers(); } }} className="text-red-400 font-bold text-xs">삭제</button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {adminView === 'company' && (
+                    <div className="max-w-4xl mx-auto space-y-12 animate-fadeIn">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h1 className="text-3xl font-black text-slate-800 tracking-tighter">회사 정보 관리</h1>
+                          <p className="text-slate-400 mt-1 uppercase text-xs font-bold">Manage company settings and metadata</p>
+                        </div>
+                        {isSuperAdmin && (
+                          <button 
+                            type="button" 
+                            onClick={() => { setShowDebugPanel(!showDebugPanel); runDiagnostics(); }}
+                            className="bg-red-500 text-white px-5 py-2.5 rounded-2xl font-bold text-xs shadow-lg hover:bg-red-600 transition flex items-center gap-1.5"
+                          >
+                            🚨 카카오맵 실시간 자가진단기 {showDebugPanel ? '닫기' : '켜기'}
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="bg-white p-10 md:p-12 rounded-[2.5rem] shadow-xl border border-gray-100 space-y-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="flex flex-col gap-2">
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-wider">회사명</label>
+                            <input type="text" placeholder="예: (주)다온씨엔이" className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl outline-none focus:bg-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition" value={companyName} onChange={e => setCompanyName(e.target.value)} />
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-wider">대표자명</label>
+                            <input type="text" placeholder="대표자 성함 입력" className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl outline-none focus:bg-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition" value={ceoName} onChange={e => setCeoName(e.target.value)} />
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-wider">사업자 등록번호</label>
+                            <input type="text" placeholder="000-00-00000" className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl outline-none focus:bg-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition" value={bizNumber} onChange={e => setBizNumber(e.target.value)} />
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-wider">대표 전화번호</label>
+                            <input type="text" placeholder="02-000-0000" className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl outline-none focus:bg-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition" value={phone} onChange={e => setPhone(e.target.value)} />
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-wider">공식 이메일 주소</label>
+                            <input type="email" placeholder="example@daoncne.com" className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl outline-none focus:bg-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition" value={companyEmail} onChange={e => setCompanyEmail(e.target.value)} />
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-wider">팩스 번호</label>
+                            <input type="text" placeholder="02-000-0000" className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl outline-none focus:bg-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition" value={faxNumber} onChange={e => setFaxNumber(e.target.value)} />
+                          </div>
+                          
+                          <div className="flex flex-col gap-2 md:col-span-2">
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-wider">회사 주소</label>
+                            <div className="flex gap-3">
+                              <input type="text" readOnly placeholder="주소 검색 버튼을 클릭하여 도로명 주소를 입력하세요" className="flex-1 px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl outline-none transition text-slate-700 font-medium" value={address} />
+                              <button type="button" onClick={handleAddressSearch} className="px-6 bg-slate-800 text-white rounded-2xl font-black text-sm shadow-md hover:bg-orange-500 transition duration-200">주소 검색</button>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col gap-2 md:col-span-2">
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-wider">상세주소</label>
+                            <input 
+                              type="text" 
+                              placeholder="예: 3층 다온씨엔이 (동, 호수, 층 등)" 
+                              className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl outline-none focus:bg-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition" 
+                              value={addressDetail} 
+                              onChange={e => setAddressDetail(e.target.value)} 
+                            />
+                          </div>
+
+                          <div className="flex flex-col gap-2 md:col-span-2 pt-4">
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-wider">지도 실시간 프리뷰</label>
+                            <div id="admin-map" className="w-full h-72 bg-slate-100 rounded-3xl border border-gray-200 overflow-hidden shadow-inner relative z-10">
+                              {!address && <div className="absolute inset-0 flex items-center justify-center text-slate-400 font-bold text-sm">주소를 입력하시면 이곳에 지도가 활성화됩니다.</div>}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="pt-4 border-t flex justify-end">
+                          <button 
+                            onClick={handleSaveCompanyInfo}
+                            className="bg-slate-900 text-white px-10 py-4 rounded-2xl font-black text-sm shadow-xl hover:bg-orange-500 transition duration-300 transform active:scale-95"
+                          >
+                            정보 수정하기
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </main>
+              } 
+            />
+          </Routes>
+        </div>
+
+        {/* 🚨 실시간 진단 대시보드 오버레이 레이어 */}
+        {isSuperAdmin && showDebugPanel && adminView === 'company' && (
+          <div className="w-96 bg-slate-950 text-slate-100 border-l border-slate-800 h-screen sticky top-0 shadow-2xl p-6 flex flex-col justify-between z-[150] animate-fadeIn">
+            <div className="space-y-6 flex-1 flex flex-col min-h-0">
+              <div className="flex justify-between items-center border-b border-slate-800 pb-4">
+                <div className="flex items-center gap-2">
+                  <span className="w-3.5 h-3.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <h3 className="font-black text-sm tracking-tight">Kakao SDK 진단 대시보ть</h3>
                 </div>
+                <button onClick={() => setShowDebugPanel(false)} className="text-slate-400 hover:text-white font-bold">✕</button>
+              </div>
 
-                <div className="bg-white p-10 md:p-12 rounded-[2.5rem] shadow-xl border border-gray-100 space-y-8">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="flex flex-col gap-2">
-                      <label className="text-xs font-black text-slate-500 uppercase tracking-wider">회사명</label>
-                      <input type="text" placeholder="예: (주)다온씨엔이" className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl outline-none focus:bg-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition" value={companyName} onChange={e => setCompanyName(e.target.value)} />
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <label className="text-xs font-black text-slate-500 uppercase tracking-wider">대표자명</label>
-                      <input type="text" placeholder="대표자 성함 입력" className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl outline-none focus:bg-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition" value={ceoName} onChange={e => setCeoName(e.target.value)} />
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <label className="text-xs font-black text-slate-500 uppercase tracking-wider">사업자 등록번호</label>
-                      <input type="text" placeholder="000-00-00000" className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl outline-none focus:bg-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition" value={bizNumber} onChange={e => setBizNumber(e.target.value)} />
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <label className="text-xs font-black text-slate-500 uppercase tracking-wider">대표 전화번호</label>
-                      <input type="text" placeholder="02-000-0000" className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl outline-none focus:bg-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition" value={phone} onChange={e => setPhone(e.target.value)} />
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <label className="text-xs font-black text-slate-500 uppercase tracking-wider">공식 이메일 주소</label>
-                      <input type="email" placeholder="example@daoncne.com" className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl outline-none focus:bg-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition" value={companyEmail} onChange={e => setCompanyEmail(e.target.value)} />
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <label className="text-xs font-black text-slate-500 uppercase tracking-wider">팩스 번호</label>
-                      <input type="text" placeholder="02-000-0000" className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl outline-none focus:bg-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition" value={faxNumber} onChange={e => setFaxNumber(e.target.value)} />
-                    </div>
-                    
-                    <div className="flex flex-col gap-2 md:col-span-2">
-                      <label className="text-xs font-black text-slate-500 uppercase tracking-wider">회사 주소</label>
-                      <div className="flex gap-3">
-                        <input type="text" readOnly placeholder="주소 검색 버튼을 클릭하여 도로명 주소를 입력하세요" className="flex-1 px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl outline-none transition text-slate-700 font-medium" value={address} />
-                        <button type="button" onClick={handleAddressSearch} className="px-6 bg-slate-800 text-white rounded-2xl font-black text-sm shadow-md hover:bg-orange-500 transition duration-200">주소 검색</button>
-                      </div>
-                    </div>
-
-                    {/* ✅ [추가] 상세주소 입력란 */}
-                    <div className="flex flex-col gap-2 md:col-span-2">
-                      <label className="text-xs font-black text-slate-500 uppercase tracking-wider">상세주소</label>
-                      <input 
-                        type="text" 
-                        placeholder="예: 3층 다온씨엔이 (동, 호수, 층 등)" 
-                        className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl outline-none focus:bg-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition" 
-                        value={addressDetail} 
-                        onChange={e => setAddressDetail(e.target.value)} 
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-2 md:col-span-2 pt-4">
-                      <label className="text-xs font-black text-slate-500 uppercase tracking-wider">지도 실시간 프리뷰</label>
-                      <div id="admin-map" className="w-full h-72 bg-slate-100 rounded-3xl border border-gray-200 overflow-hidden shadow-inner relative z-10">
-                        {!address && <div className="absolute inset-0 flex items-center justify-center text-slate-400 font-bold text-sm">주소를 입력하시면 이곳에 지도가 활성화됩니다.</div>}
-                      </div>
-                    </div>
+              <div className="space-y-2.5">
+                <h4 className="text-xs font-black text-slate-400 tracking-wider">하드웨어 상태 체크리스트</h4>
+                <div className="grid grid-cols-1 gap-2 text-xs">
+                  <div className="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
+                    <span>1. .env API 키 존재 여부</span>
+                    <span className={`font-bold px-2 py-0.5 rounded ${diagnosticReport.envKeyExist === '통과' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>{diagnosticReport.envKeyExist}</span>
                   </div>
-
-                  <div className="pt-4 border-t flex justify-end">
-                    <button 
-                      onClick={handleSaveCompanyInfo}
-                      className="bg-slate-900 text-white px-10 py-4 rounded-2xl font-black text-sm shadow-xl hover:bg-orange-500 transition duration-300 transform active:scale-95"
-                    >
-                      정보 수정하기
-                    </button>
+                  <div className="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
+                    <span>2. Script 태그 헤더 주입</span>
+                    <span className={`font-bold px-2 py-0.5 rounded ${diagnosticReport.scriptInjected === '통과' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>{diagnosticReport.scriptInjected}</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
+                    <span>3. window.kakao 객체 존재</span>
+                    <span className={`font-bold px-2 py-0.5 rounded ${diagnosticReport.windowKakaoExist === '통과' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>{diagnosticReport.windowKakaoExist}</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
+                    <span>4. window.kakao.maps 모듈</span>
+                    <span className={`font-bold px-2 py-0.5 rounded ${diagnosticReport.sdkLoadComplete === '통과' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>{diagnosticReport.sdkLoadComplete}</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
+                    <span>5. 지오코더 라이브러리 검출</span>
+                    <span className={`font-bold px-2 py-0.5 rounded ${diagnosticReport.geocoderLibraryExist === '통과' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>{diagnosticReport.geocoderLibraryExist}</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
+                    <span>6. 지도 DOM 규격 검증 (0px 여부)</span>
+                    <span className={`font-bold px-2 py-0.5 rounded ${diagnosticReport.containerHeightValid === '통과' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>{diagnosticReport.containerHeightValid}</span>
                   </div>
                 </div>
               </div>
-            )}
 
-          </main>
+              <div className="flex-grow flex flex-col min-h-0 space-y-2">
+                <div className="flex justify-between items-center">
+                  <h4 className="text-xs font-black text-slate-400 tracking-wider">실시간 시스템 로그 단말기</h4>
+                  <button onClick={() => setDebugLogs([])} className="text-[10px] text-slate-500 hover:text-white">전체 로그 비우기</button>
+                </div>
+                <div className="flex-grow bg-black rounded-2xl p-4 font-mono text-[11px] overflow-y-auto border border-slate-800 space-y-2 select-text">
+                  {debugLogs.length === 0 && <span className="text-slate-600 block">// 대기 중인 인코딩 정보가 없습니다.</span>}
+                  {debugLogs.map((log, index) => (
+                    <div key={index} className="leading-normal border-b border-slate-900 pb-1.5 last:border-0">
+                      <span className="text-slate-500 mr-1.5">[{log.timestamp}]</span>
+                      <span className={
+                        log.type === 'success' ? 'text-emerald-400' : 
+                        log.type === 'error' ? 'text-rose-400 font-bold' : 
+                        'text-slate-300'
+                      }>{log.message}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-800 flex gap-2">
+              <button 
+                type="button" 
+                onClick={runDiagnostics}
+                className="flex-1 bg-slate-800 text-white py-3 rounded-xl font-bold text-xs hover:bg-slate-700 transition"
+              >
+                🔄 진단표 새로고침
+              </button>
+            </div>
+          </div>
+        )}
+
+        {showLoginModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[200] px-4 animate-fadeIn">
+            <div className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md relative">
+              <button onClick={() => setShowLoginModal(false)} className="absolute top-6 right-6 text-gray-400 text-xl font-bold">✕</button>
+              <h2 className="text-2xl font-black mb-6 text-slate-900 uppercase">Admin Login</h2>
+              <div className="space-y-4">
+                <input type="text" placeholder="Email" className="w-full px-5 py-4 bg-gray-50 rounded-2xl outline-none border focus:border-orange-500 transition" onChange={e => setEmail(e.target.value)} />
+                <input type="password" placeholder="Password" className="w-full px-5 py-4 bg-gray-50 rounded-2xl outline-none border focus:border-orange-500 transition" onChange={e => setPassword(e.target.value)} />
+                <button onClick={handleLogin} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold shadow-lg hover:bg-orange-500 transition transform active:scale-95">Sign In</button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
-
-      {/* ✅ [수정] isSuperAdmin일 때만 진단 패널 노출 */}
-      {isSuperAdmin && showDebugPanel && adminView === 'company' && (
-        <div className="w-96 bg-slate-950 text-slate-100 border-l border-slate-800 h-screen sticky top-0 shadow-2xl p-6 flex flex-col justify-between z-[150] animate-fadeIn">
-          <div className="space-y-6 flex-1 flex flex-col min-h-0">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-4">
-              <div className="flex items-center gap-2">
-                <span className="w-3.5 h-3.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                <h3 className="font-black text-sm tracking-tight">Kakao SDK 진단 대시보드</h3>
-              </div>
-              <button onClick={() => setShowDebugPanel(false)} className="text-slate-400 hover:text-white font-bold">✕</button>
-            </div>
-
-            <div className="space-y-2.5">
-              <h4 className="text-xs font-black text-slate-400 tracking-wider">하드웨어 상태 체크리스트</h4>
-              <div className="grid grid-cols-1 gap-2 text-xs">
-                <div className="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
-                  <span>1. .env API 키 존재 여부</span>
-                  <span className={`font-bold px-2 py-0.5 rounded ${diagnosticReport.envKeyExist === '통과' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>{diagnosticReport.envKeyExist}</span>
-                </div>
-                <div className="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
-                  <span>2. Script 태그 헤더 주입</span>
-                  <span className={`font-bold px-2 py-0.5 rounded ${diagnosticReport.scriptInjected === '통과' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>{diagnosticReport.scriptInjected}</span>
-                </div>
-                <div className="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
-                  <span>3. window.kakao 객체 존재</span>
-                  <span className={`font-bold px-2 py-0.5 rounded ${diagnosticReport.windowKakaoExist === '통과' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>{diagnosticReport.windowKakaoExist}</span>
-                </div>
-                <div className="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
-                  <span>4. window.kakao.maps 모듈</span>
-                  <span className={`font-bold px-2 py-0.5 rounded ${diagnosticReport.sdkLoadComplete === '통과' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>{diagnosticReport.sdkLoadComplete}</span>
-                </div>
-                <div className="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
-                  <span>5. 지오코더 라이브러리 검출</span>
-                  <span className={`font-bold px-2 py-0.5 rounded ${diagnosticReport.geocoderLibraryExist === '통과' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>{diagnosticReport.geocoderLibraryExist}</span>
-                </div>
-                <div className="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
-                  <span>6. 지도 DOM 규격 검증 (0px 여부)</span>
-                  <span className={`font-bold px-2 py-0.5 rounded ${diagnosticReport.containerHeightValid === '통과' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>{diagnosticReport.containerHeightValid}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex-grow flex flex-col min-h-0 space-y-2">
-              <div className="flex justify-between items-center">
-                <h4 className="text-xs font-black text-slate-400 tracking-wider">실시간 시스템 로그 단말기</h4>
-                <button onClick={() => setDebugLogs([])} className="text-[10px] text-slate-500 hover:text-white">전체 로그 비우기</button>
-              </div>
-              <div className="flex-grow bg-black rounded-2xl p-4 font-mono text-[11px] overflow-y-auto border border-slate-800 space-y-2 select-text">
-                {debugLogs.length === 0 && <span className="text-slate-600 block">// 대기 중인 인코딩 정보가 없습니다.</span>}
-                {debugLogs.map((log, index) => (
-                  <div key={index} className="leading-normal border-b border-slate-900 pb-1.5 last:border-0">
-                    <span className="text-slate-500 mr-1.5">[{log.timestamp}]</span>
-                    <span className={
-                      log.type === 'success' ? 'text-emerald-400' : 
-                      log.type === 'error' ? 'text-rose-400 font-bold' : 
-                      'text-slate-300'
-                    }>{log.message}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-4 border-t border-slate-800 flex gap-2">
-            <button 
-              type="button" 
-              onClick={runDiagnostics}
-              className="flex-1 bg-slate-800 text-white py-3 rounded-xl font-bold text-xs hover:bg-slate-700 transition"
-            >
-              🔄 진단표 새로고침
-            </button>
-          </div>
-        </div>
-      )}
-
-      {showLoginModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[200] px-4 animate-fadeIn">
-          <div className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md relative">
-            <button onClick={() => setShowLoginModal(false)} className="absolute top-6 right-6 text-gray-400 text-xl font-bold">✕</button>
-            <h2 className="text-2xl font-black mb-6 text-slate-900 uppercase">Admin Login</h2>
-            <div className="space-y-4">
-              <input type="text" placeholder="Email" className="w-full px-5 py-4 bg-gray-50 rounded-2xl outline-none border focus:border-orange-500 transition" onChange={e => setEmail(e.target.value)} />
-              <input type="password" placeholder="Password" className="w-full px-5 py-4 bg-gray-50 rounded-2xl outline-none border focus:border-orange-500 transition" onChange={e => setPassword(e.target.value)} />
-              <button onClick={handleLogin} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold shadow-lg hover:bg-orange-500 transition transform active:scale-95">Sign In</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+    </BrowserRouter>
   );
 }
 
