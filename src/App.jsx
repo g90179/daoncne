@@ -27,11 +27,13 @@ function App() {
   const axiosInstance = axios.create({
     baseURL: API_URL,
   });
+  const [newUserName, setNewUserName] = useState('');
   const [newUserPhone, setNewUserPhone] = useState('');
   const [newUserRole, setNewRole] = useState('일반 관리자');
   const [editingUser, setEditingUser] = useState(null); // 현재 수정 중인 유저 객체
   const [editEmail, setEditEmail] = useState('');
   const [editPassword, setEditPassword] = useState('');
+  const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editRole, setEditRole] = useState('일반 관리자');
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
@@ -398,34 +400,38 @@ function App() {
   };
 
   // ─── 유저 정보 수정 통신 함수 ───
+  // ─── 유저 정보 수정 함수 고도화 ───
   const handleUpdateUser = async () => {
     if (!editEmail) { alert('이메일은 필수 입력 사항입니다.'); return; }
     try {
       await axiosInstance.patch(`/users/${editingUser.id}`, {
         email: editEmail,
-        password: editPassword || undefined, // 입력 안 하면 변경 없음
+        password: editPassword || undefined, 
+        name: editName, // 🔑 백엔드 name 컬럼 전송
         phone: editPhone,
         role: editRole
       });
       alert('계정 정보가 성공적으로 수정되었습니다.');
       setEditingUser(null);
       setEditPassword('');
-      fetchUsers(); // 리스트 새로고침
+      fetchUsers(); 
     } catch (e) { alert('계정 수정 연산 도중 에러가 발생했습니다.'); }
   };
   
   // ─── 기존 handleCreateUser 함수 고도화 ───
+  // ─── 유저 정보 생성 함수 고도화 ───
   const handleCreateUser = async () => {
     if (!newEmail || !newPassword) { alert('이메일과 비밀번호를 모두 입력해 주세요.'); return; }
     try {
       await axiosInstance.post(`/users`, { 
         email: newEmail, 
         password: newPassword,
+        name: newUserName, // 🔑 백엔드 name 컬럼 전송
         phone: newUserPhone,
         role: newUserRole
       });
       alert('새로운 관리자 계정이 생성되었습니다.');
-      setNewEmail(''); setNewPassword(''); setNewUserPhone(''); setNewRole('일반 관리자');
+      setNewEmail(''); setNewPassword(''); setNewUserName(''); setNewUserPhone(''); setNewRole('일반 관리자');
       fetchUsers();
     } catch (e) { alert('계정 생성 실패'); }
   };
@@ -546,7 +552,7 @@ function App() {
                       
                       <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
                         
-                        {/* 👈 좌측 배치: 신규 등록 또는 선택 수정 인터랙티브 폼 패널 (5cols) */}
+                        {/* 👈 좌측 패널: 등록 및 수정 인풋 폼 */}
                         <div className="xl:col-span-5 space-y-6">
                           {editingUser ? (
                             <div className="bg-white p-8 rounded-[2rem] shadow-xl border border-blue-100 space-y-6 animate-fadeIn">
@@ -558,6 +564,11 @@ function App() {
                                 <div className="space-y-1">
                                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">아이디 (이메일)</label>
                                   <input type="text" className="w-full px-5 py-3.5 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium" value={editEmail} onChange={e => setEditEmail(e.target.value)} />
+                                </div>
+                                {/* 🔑 수정 모드 이름(별명) 필드 */}
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">이름 (별명)</label>
+                                  <input type="text" placeholder="이름 또는 닉네임" className="w-full px-5 py-3.5 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium" value={editName} onChange={e => setEditName(e.target.value)} />
                                 </div>
                                 <div className="space-y-1">
                                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">새 비밀번호 <span className="text-blue-500 font-normal">(미입력 시 기존 유지)</span></label>
@@ -583,6 +594,8 @@ function App() {
                               <div className="space-y-4">
                                 <input type="text" placeholder="이메일 주소 입력" className="w-full px-5 py-3.5 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium" value={newEmail} onChange={e => setNewEmail(e.target.value)} />
                                 <input type="password" placeholder="비밀번호 설정" className="w-full px-5 py-3.5 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                                {/* 🔑 생성 모드 이름(별명) 필드 */}
+                                <input type="text" placeholder="이름 (별명)" className="w-full px-5 py-3.5 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium" value={newUserName} onChange={e => setNewUserName(e.target.value)} />
                                 <input type="text" placeholder="연락처 (선택)" className="w-full px-5 py-3.5 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium" value={newUserPhone} onChange={e => setNewUserPhone(e.target.value)} />
                                 <select className="w-full px-5 py-3.5 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700" value={newUserRole} onChange={e => setNewRole(e.target.value)}>
                                   <option value="일반 관리자">일반 관리자</option>
@@ -594,7 +607,7 @@ function App() {
                           )}
                         </div>
 
-                        {/* 👉 우측 배치: 현재 등록된 가용 관리자 그리드 리스트 (7cols) */}
+                        {/* 👉 우측 패널: 가용 관리자 디렉토리 리스트 */}
                         <div className="xl:col-span-7">
                           <div className="bg-white rounded-[2rem] shadow-xl border overflow-hidden">
                             <div className="p-5 bg-gray-50/80 border-b font-black text-[11px] uppercase text-gray-400 tracking-wider text-center">
@@ -605,7 +618,10 @@ function App() {
                                 <div key={u.id} className="p-6 flex justify-between items-center hover:bg-slate-50/50 transition duration-150">
                                   <div className="space-y-1">
                                     <div className="flex items-center gap-2.5">
-                                      <p className="font-extrabold text-slate-800 text-sm">{u.email}</p>
+                                      {/* 🔑 이름 데이터가 있으면 "이름 (이메일)" 구조로 시원하게 출력 */}
+                                      <p className="font-extrabold text-slate-800 text-sm">
+                                        {u.name ? `${u.name} [${u.email}]` : u.email}
+                                      </p>
                                       <span className={`px-2.5 py-0.5 text-[9px] font-black rounded-full border ${
                                         u.role === '최고 관리자' ? 'bg-orange-50 text-orange-500 border-orange-200' : 'bg-slate-50 text-slate-500 border-slate-200'
                                       }`}>
@@ -620,6 +636,7 @@ function App() {
                                       onClick={() => {
                                         setEditingUser(u);
                                         setEditEmail(u.email);
+                                        setEditName(u.name || ''); // 🔑 수정 버튼 클릭 시 기존 이름 바인딩
                                         setEditPhone(u.phone || '');
                                         setEditRole(u.role || '일반 관리자');
                                         window.scrollTo({ top: 0, behavior: 'smooth' });
