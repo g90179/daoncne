@@ -1,3 +1,4 @@
+// daon-frontend\src\components\Footer.jsx
 import React, { useEffect, useRef } from 'react';
 
 // ✅ 대지(onQuoteClick) 프롭스 추가

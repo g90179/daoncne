@@ -208,7 +208,10 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (isLoggedIn) { fetchUsers(); fetchCompanyInfo(); }
+    if (isLoggedIn) {
+      fetchUsers();
+    }
+    fetchCompanyInfo(); // 🔑 로그인 조건문 {} 밖으로 탈출시켜 로그인 여부와 상관없이 무조건 회사 정보를 불러오게 만듭니다!
     fetchPosts();
   }, [isLoggedIn, activeTab]);
 
