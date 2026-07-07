@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
-const Header = ({ companyInfo = {}, isLoggedIn, setAdminView, setShowLoginModal }) => {
+// 🔑 setAdminView 프롭스를 제거했습니다.
+const Header = ({ companyInfo = {}, isLoggedIn, setShowLoginModal }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -25,7 +26,6 @@ const Header = ({ companyInfo = {}, isLoggedIn, setAdminView, setShowLoginModal 
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // 🔑 홈 화면 내부 스크롤 가속, 다른 페이지일 때는 기본 작동하도록 허용
   const handlePortfolioClick = (e) => {
     if (isMainHome) {
       e.preventDefault();
@@ -69,9 +69,8 @@ const Header = ({ companyInfo = {}, isLoggedIn, setAdminView, setShowLoginModal 
               홈
             </Link>
             
-            {/* 🔑 다른 페이지일 때는 /#archive 라는 표준 라우팅 경로를 타고 이동하게 변경 */}
             <Link 
-              to="/#archive" 
+              to="//#archive" 
               onClick={handlePortfolioClick}
               className={`transition duration-200 ${
                 isWhiteTextTheme ? 'text-white/60 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'
@@ -91,10 +90,10 @@ const Header = ({ companyInfo = {}, isLoggedIn, setAdminView, setShowLoginModal 
             </Link>
           </div>
 
+          {/* 🔑 [수정] 대시보드 버튼 클릭 시 setAdminView 없이 즉시 /admin 경로로 브라우저 라우팅을 수행합니다. */}
           <button 
             onClick={() => {
               if (isLoggedIn) {
-                setAdminView('posts');
                 navigate('/admin');
               } else {
                 setShowLoginModal(true);
