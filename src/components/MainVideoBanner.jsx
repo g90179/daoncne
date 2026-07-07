@@ -52,6 +52,7 @@ const MainVideoBanner = () => {
                 playsInline
                 loop
                 className="w-full h-full object-cover opacity-60 pointer-events-none"
+                // style={{ objectPosition: 'center 50%' }}
             />
           )}
 

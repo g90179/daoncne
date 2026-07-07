@@ -92,7 +92,7 @@ const HomeView = ({
                           : (!showQuoteBoard ? 'text-neutral-900 font-bold' : 'text-neutral-500 hover:text-neutral-900')
                       }`}
                     >
-                      Index
+                      H
                     </button>
 
                     {/* Our Works 메뉴 버튼 */}
@@ -103,7 +103,7 @@ const HomeView = ({
                         isWhiteTextTheme ? 'text-white/60 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'
                       }`}
                     >
-                      Our Works
+                      포트폴리오
                     </a>
 
                     {/* 견적문의 메뉴 버튼 */}
