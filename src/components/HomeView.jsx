@@ -1,4 +1,6 @@
-import React from 'react';
+// daon-frontend\src\components\HomeView.jsx
+import React, { useEffect } from 'react'; // ✅ useEffect 추가
+import { useLocation } from 'react-router-dom'; // ✅ useLocation 추가
 import PostView from './PostView';
 import MainVideoBanner from './MainVideoBanner'; 
 import { API_URL } from '../config';
@@ -10,6 +12,23 @@ const HomeView = ({
   selectedPost, 
   setSelectedPost 
 }) => {
+  const location = useLocation();
+
+  // 🔑 [핵심 신규 추가] 다른 페이지에서 해시(#archive)를 들고 들어오거나 posts가 바뀔 때 정확히 저격 스크롤
+  useEffect(() => {
+    if (location.hash === '#archive') {
+      // 데이터 렌더링과 비디오 배너 로드가 완전히 끝나는 타이밍을 보장하기 위해 렌더 트리 끝단에서 실행
+      const timer = setTimeout(() => {
+        const element = document.getElementById('archive');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [location.hash, posts]); // 🌟 posts가 백엔드에서 fetch 완료되는 순간 다시 계산해서 정확히 이동합니다!
+
   return (
     <div className="w-full bg-white text-neutral-900 flex flex-col font-sans antialiased">
       {selectedPost ? (
