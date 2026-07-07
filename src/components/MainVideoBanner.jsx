@@ -36,7 +36,7 @@ const MainVideoBanner = () => {
   if (slides.length === 0) return null;
 
   return (
-    <div className="relative w-full h-[70vh] md:h-screen bg-neutral-950 overflow-hidden select-none">
+    <div className="relative w-full h-[600px] bg-neutral-950 overflow-hidden select-none">
       {slides.map((slide, index) => (
         <div
           key={slide.id}
@@ -45,12 +45,13 @@ const MainVideoBanner = () => {
           {/* 비디오 레이어 (자동재생, 음소거, 반복없음 정책 설정으로 부드러운 핸들셰이크 유도) */}
           {index === currentIndex && (
             <video
-              src={slide.videoUrl}
-              autoPlay
-              muted
-              playsInline
-              loop
-              className="w-full h-full object-cover opacity-60 pointer-events-none"
+                /* 🔑 앞에 ${API_URL}을 템플릿 리터럴로 묶어서 백엔드 전체 주소로 만들어 줍니다! */
+                src={`${API_URL}${slide.videoUrl}`} 
+                autoPlay
+                muted
+                playsInline
+                loop
+                className="w-full h-full object-cover opacity-60 pointer-events-none"
             />
           )}
 
