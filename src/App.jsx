@@ -14,6 +14,8 @@ import axios from 'axios';
 import { API_URL } from './config';
 import 'ckeditor5/ckeditor5.css';
 
+
+
 const KAKAO_MAP_KEY = 
   (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_KAKAO_MAP_KEY) ||
   (typeof process !== 'undefined' && process.env && process.env.REACT_APP_KAKAO_MAP_KEY) ||
@@ -22,7 +24,16 @@ const KAKAO_MAP_KEY =
 const DEBUG_ALLOWED_EMAIL = 'hello.g901@kakao.com';
 
 function App() {
-  const axiosInstance = axios; 
+  const axiosInstance = axios.create({
+    baseURL: API_URL,
+  });
+  const [newUserPhone, setNewUserPhone] = useState('');
+  const [newUserRole, setNewRole] = useState('일반 관리자');
+  const [editingUser, setEditingUser] = useState(null); // 현재 수정 중인 유저 객체
+  const [editEmail, setEditEmail] = useState('');
+  const [editPassword, setEditPassword] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editRole, setEditRole] = useState('일반 관리자');
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
   const [adminView, setAdminView] = useState('home'); 
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -69,6 +80,43 @@ function App() {
     const timestamp = new Date().toLocaleTimeString();
     setDebugLogs(prev => [...prev, { timestamp, message, type }]);
   };
+
+  // Request 인터셉터: 보낼 때마다 로컬스토리지의 Access Token 자동 탑재
+  axiosInstance.interceptors.request.use((config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  });
+
+  // Response 인터셉터: 401 토큰 만료 에러 감지 시 Silent Refresh 작동
+  axiosInstance.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+      const originalRequest = error.config;
+      if (error.response?.status === 401 && !originalRequest._retry) {
+        originalRequest._retry = true;
+        try {
+          const refreshToken = localStorage.getItem('refreshToken');
+          // 백엔드에 토큰 갱신 요청
+          const res = await axiosOriginal.post(`${API_URL}/auth/refresh`, { refreshToken });
+          const newAccessToken = res.data.access_token;
+          
+          localStorage.setItem('token', newAccessToken);
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+          return axiosOriginal(originalRequest); // 실패했던 원래 API 재시도
+        } catch (refreshError) {
+          // 리프레시 토큰조차 만료 시 강제 로그아웃
+          localStorage.removeItem('token');
+          localStorage.removeItem('refreshToken');
+          alert('보안 세션이 만료되었습니다. 다시 로그인해 주세요.');
+          window.location.href = '/';
+        }
+      }
+      return Promise.reject(error);
+    }
+  );
 
   const runDiagnostics = () => {
     logDebug('🔍 카카오맵 API 연동 자가진단을 시작합니다...', 'info');
@@ -325,18 +373,18 @@ function App() {
 
   // ─── 로그인 처리 함수 수정 ───
   const handleLogin = async () => {
-    try {
-      const res = await axiosInstance.post(`${API_URL}/auth/login`, { email, password });
-      localStorage.setItem('token', res.data.access_token);
-      localStorage.setItem('loggedInEmail', email);
-      setLoggedInEmail(email);
-      setIsLoggedIn(true); 
-      setAdminView('posts'); 
-      setShowLoginModal(false);
-      
-      window.location.href = '/admin'; // 🔑 로그인 완료 즉시 어드민 페이지로 이동
-    } catch (e) { alert('로그인 실패'); }
-  };
+  try {
+    const res = await axiosInstance.post(`/auth/login`, { email, password });
+    localStorage.setItem('token', res.data.access_token);
+    localStorage.setItem('refreshToken', res.data.refresh_token); // 🔑 한 달 저장용 주입
+    localStorage.setItem('loggedInEmail', email);
+    setLoggedInEmail(email);
+    setIsLoggedIn(true); 
+    setAdminView('posts'); 
+    setShowLoginModal(false);
+    window.location.href = '/admin';
+  } catch (e) { alert('로그인에 실패했습니다. 계정 정보를 확인하세요.'); }
+};
   
   // ─── 로그아웃 처리 함수 수정 ───
   const handleLogout = () => { 
@@ -348,14 +396,38 @@ function App() {
     
     window.location.href = '/'; // 🔑 로그아웃 즉시 메인 홈으로 튕겨냅니다.
   };
+
+  // ─── 유저 정보 수정 통신 함수 ───
+  const handleUpdateUser = async () => {
+    if (!editEmail) { alert('이메일은 필수 입력 사항입니다.'); return; }
+    try {
+      await axiosInstance.patch(`/users/${editingUser.id}`, {
+        email: editEmail,
+        password: editPassword || undefined, // 입력 안 하면 변경 없음
+        phone: editPhone,
+        role: editRole
+      });
+      alert('계정 정보가 성공적으로 수정되었습니다.');
+      setEditingUser(null);
+      setEditPassword('');
+      fetchUsers(); // 리스트 새로고침
+    } catch (e) { alert('계정 수정 연산 도중 에러가 발생했습니다.'); }
+  };
   
+  // ─── 기존 handleCreateUser 함수 고도화 ───
   const handleCreateUser = async () => {
     if (!newEmail || !newPassword) { alert('이메일과 비밀번호를 모두 입력해 주세요.'); return; }
     try {
-      await axiosInstance.post(`${API_URL}/users`, { email: newEmail, password: newPassword });
-      alert('계정이 성공적으로 생성되었습니다.');
-      setNewEmail(''); setNewPassword(''); fetchUsers();
-    } catch (e) { alert('계정 생성에 실패했습니다.'); }
+      await axiosInstance.post(`/users`, { 
+        email: newEmail, 
+        password: newPassword,
+        phone: newUserPhone,
+        role: newUserRole
+      });
+      alert('새로운 관리자 계정이 생성되었습니다.');
+      setNewEmail(''); setNewPassword(''); setNewUserPhone(''); setNewRole('일반 관리자');
+      fetchUsers();
+    } catch (e) { alert('계정 생성 실패'); }
   };
 
   // ─── 내부에 선언된 Sidebar 컴포넌트 수정 ───
@@ -466,27 +538,114 @@ function App() {
                   )}
                   
                   {adminView === 'users' && (
-                    <div className="max-w-4xl mx-auto space-y-12 animate-fadeIn">
-                      <h1 className="text-3xl font-black text-slate-800">계정 관리</h1>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="bg-white p-10 rounded-[2.5rem] shadow-xl border"><h3 className="font-bold mb-6 text-slate-800">👤 신규 계정 등록</h3>
-                          <div className="space-y-4">
-                            <input type="text" placeholder="Email" className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" value={newEmail} onChange={e => setNewEmail(e.target.value)} />
-                            <input type="password" placeholder="Password" className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
-                            <button onClick={handleCreateUser} className="w-full bg-blue-900 text-white py-4 rounded-2xl font-black hover:bg-blue-800 transition shadow-lg">계정 생성</button>
-                          </div>
-                        </div>
-                        <div className="bg-white rounded-[2.5rem] shadow-xl border overflow-hidden">
-                          <div className="p-6 bg-gray-50 border-b font-bold text-xs uppercase text-gray-400 tracking-widest text-center">Admin List</div>
-                          <div className="divide-y h-[400px] overflow-y-auto">
-                            {users.map(u => (
-                              <div key={u.id} className="p-6 flex justify-between items-center hover:bg-gray-50 transition">
-                                <p className="font-bold text-slate-700">{u.email}</p>
-                                <button onClick={async () => { if(confirm('삭제?')) { await axiosInstance.delete(`${API_URL}/users/${u.id}`); fetchUsers(); } }} className="text-red-400 font-bold text-xs">삭제</button>
+                    <div className="max-w-6xl mx-auto space-y-12 animate-fadeIn">
+                      <div className="flex flex-col">
+                        <h1 className="text-3xl font-black text-slate-800 tracking-tight">계정 관리</h1>
+                        <p className="text-slate-400 mt-1 uppercase text-xs font-bold">Manage system admin credentials and authorization levels</p>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
+                        
+                        {/* 👈 좌측 배치: 신규 등록 또는 선택 수정 인터랙티브 폼 패널 (5cols) */}
+                        <div className="xl:col-span-5 space-y-6">
+                          {editingUser ? (
+                            <div className="bg-white p-8 rounded-[2rem] shadow-xl border border-blue-100 space-y-6 animate-fadeIn">
+                              <div className="flex justify-between items-center border-b pb-3">
+                                <h3 className="font-black text-slate-800 text-base">🛠️ 계정 정보 수정</h3>
+                                <button onClick={() => setEditingUser(null)} className="text-xs font-bold text-slate-400 hover:text-slate-900">수정 취소</button>
                               </div>
-                            ))}
+                              <div className="space-y-4">
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">아이디 (이메일)</label>
+                                  <input type="text" className="w-full px-5 py-3.5 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium" value={editEmail} onChange={e => setEditEmail(e.target.value)} />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">새 비밀번호 <span className="text-blue-500 font-normal">(미입력 시 기존 유지)</span></label>
+                                  <input type="password" placeholder="••••••••" className="w-full px-5 py-3.5 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" value={editPassword} onChange={e => setEditPassword(e.target.value)} />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">전화번호 연락처</label>
+                                  <input type="text" placeholder="예: 010-1234-5678" className="w-full px-5 py-3.5 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium" value={editPhone} onChange={e => setEditPhone(e.target.value)} />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">권한 등급 설정</label>
+                                  <select className="w-full px-5 py-3.5 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700" value={editRole} onChange={e => setEditRole(e.target.value)}>
+                                    <option value="일반 관리자">일반 관리자</option>
+                                    <option value="최고 관리자">최고 관리자</option>
+                                  </select>
+                                </div>
+                                <button onClick={handleUpdateUser} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black hover:bg-blue-700 transition shadow-md mt-2">변경 사항 저장</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="bg-white p-8 rounded-[2rem] shadow-xl border space-y-6">
+                              <h3 className="font-black text-slate-800 text-base border-b pb-3">👤 신규 계정 등록</h3>
+                              <div className="space-y-4">
+                                <input type="text" placeholder="이메일 주소 입력" className="w-full px-5 py-3.5 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium" value={newEmail} onChange={e => setNewEmail(e.target.value)} />
+                                <input type="password" placeholder="비밀번호 설정" className="w-full px-5 py-3.5 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                                <input type="text" placeholder="연락처 (선택)" className="w-full px-5 py-3.5 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium" value={newUserPhone} onChange={e => setNewUserPhone(e.target.value)} />
+                                <select className="w-full px-5 py-3.5 bg-gray-50 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700" value={newUserRole} onChange={e => setNewRole(e.target.value)}>
+                                  <option value="일반 관리자">일반 관리자</option>
+                                  <option value="최고 관리자">최고 관리자</option>
+                                </select>
+                                <button onClick={handleCreateUser} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black hover:bg-orange-500 transition shadow-md mt-2">새 어드민 생성</button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 👉 우측 배치: 현재 등록된 가용 관리자 그리드 리스트 (7cols) */}
+                        <div className="xl:col-span-7">
+                          <div className="bg-white rounded-[2rem] shadow-xl border overflow-hidden">
+                            <div className="p-5 bg-gray-50/80 border-b font-black text-[11px] uppercase text-gray-400 tracking-wider text-center">
+                              Active System Admin Directory
+                            </div>
+                            <div className="divide-y h-[560px] overflow-y-auto custom-scrollbar">
+                              {users.map(u => (
+                                <div key={u.id} className="p-6 flex justify-between items-center hover:bg-slate-50/50 transition duration-150">
+                                  <div className="space-y-1">
+                                    <div className="flex items-center gap-2.5">
+                                      <p className="font-extrabold text-slate-800 text-sm">{u.email}</p>
+                                      <span className={`px-2.5 py-0.5 text-[9px] font-black rounded-full border ${
+                                        u.role === '최고 관리자' ? 'bg-orange-50 text-orange-500 border-orange-200' : 'bg-slate-50 text-slate-500 border-slate-200'
+                                      }`}>
+                                        {u.role || '일반 관리자'}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-slate-400 font-medium">{u.phone || '등록된 연락처 없음'}</p>
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-4">
+                                    <button 
+                                      onClick={() => {
+                                        setEditingUser(u);
+                                        setEditEmail(u.email);
+                                        setEditPhone(u.phone || '');
+                                        setEditRole(u.role || '일반 관리자');
+                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                      }} 
+                                      className="text-blue-500 font-black text-xs hover:underline"
+                                    >
+                                      수정
+                                    </button>
+                                    <button 
+                                      onClick={async () => { 
+                                        if(confirm(`${u.email} 계정을 영구 삭제하시겠습니까?`)) { 
+                                          await axiosInstance.delete(`/users/${u.id}`); 
+                                          fetchUsers(); 
+                                        } 
+                                      }} 
+                                      className="text-red-400 font-bold text-xs hover:text-red-600"
+                                    >
+                                      삭제
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         </div>
+
                       </div>
                     </div>
                   )}
