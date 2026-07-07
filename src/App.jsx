@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+// daon-frontend\src\App.jsx
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import HomeView from './components/HomeView';
 import AdminPostEditor from './components/AdminPostEditor';
 import AdminPostList from './components/AdminPostList';
+import MainSlideAdmin from './pages/admin/MainSlideAdmin'; // 🎬 [추가] 슬라이드 어드민 컴포넌트 임포트
 import { API_URL } from './config';
 import 'ckeditor5/ckeditor5.css';
 
@@ -206,10 +208,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (isLoggedIn) {
-      fetchUsers();
-      fetchCompanyInfo(); 
-    }
+    if (isLoggedIn) { fetchUsers(); fetchCompanyInfo(); }
     fetchPosts();
   }, [isLoggedIn, activeTab]);
 
@@ -259,7 +258,6 @@ function App() {
   }, [adminView, address, isMapScriptLoaded]);
 
   const fetchUsers = async () => { try { const res = await axios.get(`${API_URL}/users`); setUsers(res.data); } catch (e) {} };
-  
   const fetchPosts = async () => {
     const categoryParam = activeTab === '전체' ? '' : activeTab;
     const response = await axios.get(`${API_URL}/posts?category=${categoryParam}`);
@@ -324,22 +322,16 @@ function App() {
     try {
       const res = await axios.post(`${API_URL}/auth/login`, { email, password });
       localStorage.setItem('token', res.data.access_token);
-
-      // ✅ [추가] 로그인에 사용한 이메일을 저장 (진단 대시보드 노출 여부 판단용)
       localStorage.setItem('loggedInEmail', email);
       setLoggedInEmail(email);
-
       setIsLoggedIn(true); setAdminView('posts'); setShowLoginModal(false);
     } catch (e) { alert('로그인 실패'); }
   };
   
   const handleLogout = () => { 
     localStorage.removeItem('token'); 
-
-    // ✅ [추가] 로그아웃 시 저장해둔 이메일도 초기화
     localStorage.removeItem('loggedInEmail');
     setLoggedInEmail('');
-
     setIsLoggedIn(false); setAdminView('home'); 
   };
   
@@ -352,6 +344,7 @@ function App() {
     } catch (e) { alert('계정 생성에 실패했습니다.'); }
   };
 
+  // 🧱 어드민 전용 내비게이션 사이드바
   const Sidebar = () => (
     <aside className="w-64 bg-slate-900 text-white flex flex-col h-screen sticky top-0 shadow-2xl">
       <div className="p-8"><h2 className="text-xl font-black text-orange-500 uppercase tracking-tighter">Daon CNE</h2></div>
@@ -359,13 +352,10 @@ function App() {
         <button onClick={() => setAdminView('home')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${adminView === 'home' ? 'bg-slate-700' : 'text-slate-400 hover:bg-slate-800'}`}>🏠 홈페이지 보기</button>
         <div className="h-px bg-slate-800 my-4 mx-2" />
         <button onClick={() => setAdminView('posts')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${adminView === 'posts' ? 'bg-orange-500 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>📝 콘텐츠 관리</button>
+        {/* 🎬 [추가] 사이드바 슬라이드 제어 인터페이스 링크 소생 */}
+        <button onClick={() => setAdminView('slides')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${adminView === 'slides' ? 'bg-orange-500 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>🎬 메인 슬라이드 관리</button>
         <button onClick={() => setAdminView('users')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${adminView === 'users' ? 'bg-orange-500 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>👤 계정 관리</button>
-        <button 
-          onClick={() => setAdminView('company')} 
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${adminView === 'company' ? 'bg-orange-500 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
-        >
-          🏢 회사 정보 관리
-        </button>
+        <button onClick={() => setAdminView('company')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${adminView === 'company' ? 'bg-orange-500 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>🏢 회사 정보 관리</button>
       </nav>
       <div className="p-6 border-t border-slate-800"><button onClick={handleLogout} className="w-full py-3 text-red-400 font-bold hover:bg-red-500/10 rounded-xl transition">로그아웃</button></div>
     </aside>
@@ -418,6 +408,13 @@ function App() {
                     <AdminPostList posts={posts} onEdit={(post) => { setEditingPost(post); window.scrollTo({ top: 0, behavior: 'smooth' }); }} onDelete={async (id) => { if(confirm('삭제하시겠습니까?')) { await axios.delete(`${API_URL}/posts/${id}`); fetchPosts(); } }} />
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* 🎬 [추가] adminView가 'slides' 일 때 메인 슬라이드 어드민 뷰를 로드해 주는 파이프라인 */}
+            {adminView === 'slides' && (
+              <div className="animate-fadeIn">
+                <MainSlideAdmin />
               </div>
             )}
             

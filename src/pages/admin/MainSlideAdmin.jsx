@@ -1,5 +1,5 @@
 // daon-frontend/src/pages/admin/MainSlideAdmin.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { API_URL } from '../../config';
 
@@ -7,6 +7,11 @@ const MainSlideAdmin = () => {
   const [slides, setSlides] = useState([]);
   const [isWriteMode, setIsWriteMode] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  
+  // 🎬 파일 처리 및 프로그레스 상태 관리 변수 선언
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef(null);
   
   const [formData, setFormData] = useState({
     title: '', description: '', videoUrl: '', isExposed: true, duration: 5
@@ -29,19 +34,61 @@ const MainSlideAdmin = () => {
     }));
   };
 
+  // 🎬 파일 선택 시 상태값 캐싱 처리
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedFile(file);
+      // 파일을 직접 업로드하면 기존 직접 작성 중이던 URL 텍스트 칸을 초기화하고 우선순위 적용 알림 명시
+      setFormData(prev => ({ ...prev, videoUrl: `[선택된 파일]: ${file.name}` }));
+    }
+  };
+
+  // 🎯 등록 / 수정 통합 서브밋 가속 파이프라인
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    let finalVideoUrl = formData.videoUrl;
+
+    // 🎬 컴퓨터에서 업로드할 비디오 파일이 선택된 경우, 백엔드 바이너리 디스크 스토리지 선점 실행
+    if (selectedFile) {
+      setIsUploading(true);
+      const uploadData = new FormData();
+      uploadData.append('video', selectedFile);
+
+      try {
+        const uploadRes = await axios.post(`${API_URL}/main-slides/upload`, uploadData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        finalVideoUrl = uploadRes.data.videoUrl; // 백엔드가 수락한 정적 접근 주소 매핑 전환
+      } catch (uploadErr) {
+        alert(uploadErr.response?.data?.message || '비디오 서버 파일 업로드 실패. 용량이나 형식을 확인하세요.');
+        setIsUploading(false);
+        return;
+      }
+    }
+
+    // 파일 업로드 검증 단계 정상 통과 시 최종 주소 갱신 조치
+    const payload = {
+      ...formData,
+      videoUrl: finalVideoUrl
+    };
+
     try {
       if (editingId) {
-        await axios.put(`${API_URL}/main-slides/${editingId}`, formData);
+        await axios.put(`${API_URL}/main-slides/${editingId}`, payload);
         alert('슬라이드가 수정되었습니다.');
       } else {
-        await axios.post(`${API_URL}/main-slides`, formData);
+        await axios.post(`${API_URL}/main-slides`, payload);
         alert('새 슬라이드가 등록되었습니다.');
       }
       resetForm();
       fetchSlides();
-    } catch (err) { alert('저장에 실패했습니다.'); }
+    } catch (err) { 
+      alert('데이터베이스 슬라이드 정보 저장 실패'); 
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleEdit = (slide) => {
@@ -53,6 +100,7 @@ const MainSlideAdmin = () => {
       isExposed: slide.isExposed,
       duration: slide.duration
     });
+    setSelectedFile(null);
     setIsWriteMode(true);
   };
 
@@ -67,6 +115,8 @@ const MainSlideAdmin = () => {
   const resetForm = () => {
     setFormData({ title: '', description: '', videoUrl: '', isExposed: true, duration: 5 });
     setEditingId(null);
+    setSelectedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
     setIsWriteMode(false);
   };
 
@@ -97,10 +147,43 @@ const MainSlideAdmin = () => {
                 <label className="block text-xs font-semibold text-neutral-400 mb-2">간단 설명</label>
                 <input type="text" name="description" value={formData.description} onChange={handleInputChange} placeholder="정밀 공학적 시뮬레이션과 안전 표준을 준수합니다." className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3" />
               </div>
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-neutral-400 mb-2">영상 URL / 경로 *</label>
-                <input type="text" name="videoUrl" required value={formData.videoUrl} onChange={handleInputChange} placeholder="/videos/main_banner_01.mp4 또는 스트리밍 링크" className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3 font-mono text-xs" />
+              
+              {/* 🎬 영상 소스 멀티플 바인딩 제어 단락 */}
+              <div className="sm:col-span-2 space-y-2">
+                <label className="block text-xs font-semibold text-neutral-400">영상 소스 선택 *</label>
+                <div className="flex flex-col sm:flex-row gap-3 items-stretch">
+                  {/* 파일 업로드 숨김 인풋 브릿지 */}
+                  <input 
+                    type="file" 
+                    accept="video/*" 
+                    ref={fileInputRef} 
+                    onChange={handleFileChange} 
+                    className="hidden" 
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-xs font-bold bg-neutral-100 hover:bg-neutral-200 border border-neutral-200/80 px-4 py-3 rounded-xl transition whitespace-nowrap"
+                  >
+                    🎬 영상 파일 선택
+                  </button>
+                  <input 
+                    type="text" 
+                    name="videoUrl" 
+                    required 
+                    value={formData.videoUrl} 
+                    onChange={handleInputChange} 
+                    placeholder="파일을 선택하시거나 직접 외부 영상 주소(/videos/main.mp4 등)를 기입하세요." 
+                    className="flex-1 text-sm border border-neutral-200 rounded-xl px-4 py-3 text-neutral-600 font-mono text-xs" 
+                  />
+                </div>
+                {selectedFile && (
+                  <p className="text-[11px] text-blue-600 font-semibold animate-fadeIn">
+                    ✓ 저장 시 서버로 전송 및 인코딩 배치가 가동됩니다: {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+                  </p>
+                )}
               </div>
+
               <div>
                 <label className="block text-xs font-semibold text-neutral-400 mb-2">슬라이드 노출 시간 (초 단위) *</label>
                 <input type="number" name="duration" min="1" required value={formData.duration} onChange={handleInputChange} className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3 font-bold" />
@@ -111,8 +194,15 @@ const MainSlideAdmin = () => {
               </div>
             </div>
             <div className="flex justify-end gap-2 pt-4 border-t border-neutral-100">
-              <button type="button" onClick={resetForm} className="text-xs text-neutral-500 border bg-white px-4 py-2.5 rounded-xl">취소</button>
-              <button type="submit" className="text-xs font-bold text-white bg-neutral-950 px-5 py-2.5 rounded-xl shadow-sm">{editingId ? '수정 완료하기' : '저장 완료하기'}</button>
+              <button type="button" disabled={isUploading} onClick={resetForm} className="text-xs text-neutral-500 border bg-white px-4 py-2.5 rounded-xl disabled:opacity-50">취소</button>
+              <button type="submit" disabled={isUploading} className="text-xs font-bold text-white bg-neutral-950 px-5 py-2.5 rounded-xl shadow-sm hover:bg-neutral-800 transition-all disabled:bg-neutral-400 flex items-center gap-1.5">
+                {isUploading ? (
+                  <>
+                    <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    서버로 대용량 전송 중...
+                  </>
+                ) : editingId ? '수정 완료하기' : '저장 완료하기'}
+              </button>
             </div>
           </form>
         ) : (

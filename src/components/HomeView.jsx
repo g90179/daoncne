@@ -1,7 +1,9 @@
-import React, { useState } from 'react'; // ✅ 상태 관리를 위해 useState 추가
+// daon-frontend\src\components\HomeView.jsx
+import React, { useState } from 'react'; 
 import PostView from './PostView';
-import QuoteBoard from '../pages/QuoteBoard'; // ✅ 상대 경로 수정 (../pages/)
+import QuoteBoard from '../pages/QuoteBoard'; 
 import Footer from './Footer';
+import MainVideoBanner from './MainVideoBanner'; // 🎬 [추가] 동적 비디오 배너 엔진 임포트
 import { API_URL } from '../config';
 
 const HomeView = ({ 
@@ -16,12 +18,9 @@ const HomeView = ({
   companyInfo,  
   isMapScriptLoaded 
 }) => {
-  // 📝 견적문의 게시판 화면 노출 여부를 제어하는 로컬 상태 추가
   const [showQuoteBoard, setShowQuoteBoard] = useState(false);
-  const [quoteTab, setQuoteTab] = useState('list'); // ✅ 추가
+  const [quoteTab, setQuoteTab] = useState('list'); 
 
-
-  // 메인 화면으로 돌아오는 공통 초기화 함수
   const handleGoHome = () => {
     setSelectedPost(null);
     setShowQuoteBoard(false);
@@ -38,7 +37,6 @@ const HomeView = ({
             <header className="w-full border-b border-neutral-200 bg-white sticky top-0 z-50">
               <div className="max-w-[1600px] mx-auto px-6 md:px-12 h-20 flex justify-between items-center">
                 
-                {/* 로고 (클릭 시 메인 홈으로 부드럽게 복귀) */}
                 <div 
                   className="text-xl font-normal tracking-tight text-neutral-900 cursor-pointer" 
                   onClick={handleGoHome}
@@ -46,7 +44,6 @@ const HomeView = ({
                   daon<span className="font-bold text-neutral-900">cne</span>
                 </div>
                 
-                {/* 우측 메뉴 헤더 내비게이션 */}
                 <div className="flex items-center gap-8 md:gap-12">
                   <div className="hidden sm:flex items-center gap-8 text-sm font-medium text-neutral-500">
                     <button 
@@ -62,11 +59,10 @@ const HomeView = ({
                     >
                       Our Works
                     </a>
-                    {/* 🔥 [추가] 견적문의 메뉴 탭 */}
                     <button 
                       onClick={() => { 
                         setSelectedPost(null); 
-                        setQuoteTab('list'); // 네비바 메뉴 클릭 시에는 기본 '목록' 노출
+                        setQuoteTab('list'); 
                         setShowQuoteBoard(true); 
                       }} 
                       className={`transition duration-200 ${showQuoteBoard ? 'text-neutral-900 font-bold' : 'hover:text-neutral-900'}`}
@@ -88,23 +84,12 @@ const HomeView = ({
 
             {/* ─── 조건부 렌더링 영역 ─── */}
             {showQuoteBoard ? (
-              <QuoteBoard initialTab={quoteTab} isLoggedIn={isLoggedIn} /> // ✅ initialTab 프롭스 전달 ✅ isLoggedIn 프롭스 주입!
+              <QuoteBoard initialTab={quoteTab} isLoggedIn={isLoggedIn} /> 
             ) : (
               /* 🏠 기본 메인 아카이브 레이아웃 */
               <>
-                {/* ─── 2. 메인 인트로 섹션 ─── */}
-                <section className="bg-[#f4f4f5] border-b border-neutral-200 py-20 md:py-32 px-6 md:px-12">
-                  <div className="max-w-[1600px] mx-auto text-left space-y-4">
-                    <p className="text-xs font-bold uppercase tracking-widest text-neutral-400">Engineering & Logistics Archive</p>
-                    <h1 className="text-3xl md:text-5xl lg:text-6xl font-light tracking-tight text-neutral-900 leading-[1.15]">
-                      다온씨엔이가 설계하고 완수한 <br />
-                      <span className="font-bold text-neutral-900">중량물 설비 이전 및 설치</span> 프로젝트 쇼케이스입니다.
-                    </h1>
-                    <p className="text-sm text-neutral-500 max-w-xl pt-2 font-medium leading-relaxed">
-                      정밀한 공학적 시뮬레이션과 안전 표준을 준수하여 인프라 자산을 완벽하게 이동시킵니다. 아래 아카이브에서 필터별 실적을 탐색할 수 있습니다.
-                    </p>
-                  </div>
-                </section>
+                {/* ─── 2. [변경] 메인 인트로 섹션을 동적 비디오 배너 슬라이더로 대대적 교체 ─── */}
+                <MainVideoBanner />
 
                 {/* ─── 3. 아카이브 섹션 ─── */}
                 <section className="py-12 bg-white px-4 md:px-10 w-full" id="archive">
@@ -153,7 +138,7 @@ const HomeView = ({
                                   src={`${API_URL}${imageFile.url}`} 
                                   className="w-full h-full object-cover transition-transform duration-500 ease-out brightness-[0.98]" 
                                   alt={post.title} 
-                                />
+                               />
                               ) : videoFile ? (
                                 <div className="w-full h-full bg-neutral-950 flex items-center justify-center relative overflow-hidden">
                                   <video 
@@ -161,7 +146,7 @@ const HomeView = ({
                                     className="w-full h-full object-cover opacity-90" 
                                     muted 
                                     preload="metadata" 
-                                  />
+                                 />
                                   <div className="absolute bottom-3 right-3 bg-neutral-900/80 text-[9px] font-black tracking-widest text-white px-2 py-1 uppercase z-20">
                                     Video
                                   </div>
@@ -200,18 +185,16 @@ const HomeView = ({
         )}
       </div>
 
-      {/* ─── 4. 하단 푸터 연동 ─── */}
-      {/* 💡 푸터 내부의 견적문의하기 버튼을 클릭했을 때도 화면이 전환될 수 있도록 이벤트 주입 */}
       <Footer 
-      companyInfo={companyInfo} 
-      isMapScriptLoaded={isMapScriptLoaded} 
-      onQuoteClick={() => {
-        setSelectedPost(null);
-        setQuoteTab('write'); // 🔥 푸터 버튼을 누르면 '문의하기(write)' 탭으로 지정
-        setShowQuoteBoard(true);
-        window.scrollTo(0, 0);
-      }}
-      />
+        companyInfo={companyInfo} 
+        isMapScriptLoaded={isMapScriptLoaded} 
+        onQuoteClick={() => {
+          setSelectedPost(null);
+          setQuoteTab('write'); 
+          setShowQuoteBoard(true);
+          window.scrollTo(0, 0);
+        }}
+     />
     </div>
   );
 };
