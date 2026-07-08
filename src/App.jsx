@@ -1,12 +1,13 @@
 // daon-frontend/src/App.jsx
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+// 🔑 [핵심 변경] BrowserRouter 대신 실서버 404를 원천 차단하는 HashRouter를 도입합니다.
+import { HashRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import HomeView from './components/HomeView';
 import QuoteBoard from './pages/QuoteBoard';
 import AdminDashboard from './pages/admin/AdminDashboard';
-import ForgotPassword from './pages/admin/ForgotPassword'; // 🔑 비밀번호 찾기 메일 요청 페이지 임포트
-import ResetPassword from './pages/admin/ResetPassword';   // 🔑 인스턴스키 검증 및 변경 페이지 임포트
+import ForgotPassword from './pages/admin/ForgotPassword'; 
+import ResetPassword from './pages/admin/ResetPassword';   
 import axiosOriginal from 'axios';
 import { API_URL } from './config';
 import 'ckeditor5/ckeditor5.css';
@@ -120,7 +121,7 @@ function App() {
       setLoggedInEmail(email);
       setIsLoggedIn(true);
       setShowLoginModal(false);
-      window.location.href = '/admin';
+      window.location.href = '/#/admin'; // 🔑 해시 라우터 규격에 맞춰 주소 분기 변경
     } catch (e) { alert('로그인 정보가 틀렸습니다.'); }
   };
   
@@ -131,8 +132,8 @@ function App() {
   };
 
   return (
-    <BrowserRouter>
-      {/* 🔑 [컨텍스트 브릿지 연결] 조건 4를 수행하기 위한 전역 네비게이션/팝업 감시 트래커 매니저 장착 */}
+    // 🔑 BrowserRouter 대신 HashRouter 레이어로 교체 감싸기 완료
+    <HashRouter>
       <AdminAuthManager 
         showLoginModal={showLoginModal}
         setShowLoginModal={setShowLoginModal}
@@ -158,7 +159,6 @@ function App() {
           } />
           <Route path="/quotes" element={<QuoteBoard isLoggedIn={isLoggedIn} />} />
           
-          {/* 🔑 조건 2: 메인 레이아웃 프레임 내부에서 구동되는 비밀번호 탐색 노드 추가 */}
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
         </Route>
@@ -181,24 +181,20 @@ function App() {
           } 
         />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 
 /**
  * 🔒 [신규 지원 컴포넌트] AdminAuthManager
- * BrowserRouter 내부에 위치하여 라우터 전용 훅(useLocation, useNavigate)을 안전하게 활용하고, 
- * 소프트 UI 컨셉이 가미된 모달 인터페이스 피드를 통합 처리합니다.
  */
 function AdminAuthManager({ showLoginModal, setShowLoginModal, email, setEmail, password, setPassword, handleLogin }) {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // 🔑 조건 4: 비밀번호 변경 완료 후 넘어온 트리거 시그널(triggerLogin) 가로채기
   useEffect(() => {
     if (location.state?.triggerLogin) {
       setShowLoginModal(true);
-      // 브라우저 뒤로가기 캐시 찌꺼기 청소 및 상태 초기화
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location, navigate, setShowLoginModal]);
@@ -232,12 +228,11 @@ function AdminAuthManager({ showLoginModal, setShowLoginModal, email, setEmail, 
           </button>
         </div>
 
-        {/* 🔑 조건 1: 비밀번호 찾기 전용 블루 링크 연동 (SPA 라우팅 안전 보장) */}
         <div className="mt-5 text-center border-t border-slate-100 pt-4">
           <button 
             onClick={() => {
-              setShowLoginModal(false); // 기존 로그인 팝업 종료
-              navigate('/forgot-password'); // 비밀번호 찾기 컴포넌트로 워프
+              setShowLoginModal(false);
+              navigate('/forgot-password'); 
             }}
             className="text-xs text-slate-400 hover:text-blue-400 font-bold transition cursor-pointer"
           >
