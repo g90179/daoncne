@@ -28,7 +28,7 @@ const ForgotPassword = () => {
         <div>
           <span className="text-3xl">🔐</span>
           <h2 className="text-xl font-bold text-[oklch(0.38_0.07_259.56)] mt-3">비밀번호 찾기</h2>
-          <p className="text-xs text-slate-400 mt-1">등록하신 마스터 계정의 이메일을 입력하세요.</p>
+          <p className="text-xs text-slate-400 mt-1">등록하신 이메일로 인증 링크를 발송합니다.</p>
         </div>
 
         {!isSent ? (
