@@ -5,6 +5,7 @@ import AdminPostAdmin from './AdminPostAdmin';
 import MainSlideAdmin from './MainSlideAdmin';
 import AdminUserAdmin from './AdminUserAdmin';
 import AdminCompanyAdmin from './AdminCompanyAdmin';
+import AdminPolicyAdmin from './AdminPolicyAdmin'; // 정책 관리 컴포넌트
 
 const DEBUG_ALLOWED_EMAIL = 'hello.g901@kakao.com';
 
@@ -34,7 +35,8 @@ const AdminDashboard = ({
     posts: '콘텐츠 관리',
     slides: '메인 슬라이드 관리',
     users: '계정 관리',
-    company: '회사 정보 관리'
+    company: '회사 정보 관리',
+    policies: '정책 관리'
   };
 
   return (
@@ -56,6 +58,7 @@ const AdminDashboard = ({
               { id: 'slides', label: '메인 슬라이드', icon: '🎬' },
               { id: 'users', label: '계정 관리', icon: '👤' },
               { id: 'company', label: '회사 정보 관리', icon: '🏢' },
+              { id: 'policies', label: '정책 관리', icon: '📋' },
             ].map((menu) => {
               const isActive = adminView === menu.id;
               return (
@@ -126,6 +129,7 @@ const AdminDashboard = ({
               fetchGlobalCompanyInfo={fetchGlobalCompanyInfo} 
             />
           )}
+          {adminView === 'policies' && <AdminPolicyAdmin />}
         </div>
       </main>
 

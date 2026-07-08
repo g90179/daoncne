@@ -1,3 +1,4 @@
+/* daon-frontend\src\index.css */
 @import "tailwindcss";
 
 /* v4 방식의 플러그인 로드 */
@@ -18,11 +19,29 @@
 
 /* CKEditor 5 편집 영역 최소 높이 지정 및 테두리 둥글게 최적화 */
 .ck-editor__editable_inline {
-    min-height: 500px;
-    border-bottom-left-radius: 1rem !important;
-    border-bottom-right-radius: 1rem !important;
+  min-height: 500px;
+  border-bottom-left-radius: 1rem !important;
+  border-bottom-right-radius: 1rem !important;
 }
 .ck-editor__top {
-    border-top-left-radius: 1rem !important;
-    border-top-right-radius: 1rem !important;
+  border-top-left-radius: 1rem !important;
+  border-top-right-radius: 1rem !important;
+}
+
+/* CKEditor 5 관리자 캔버스 정렬용 전역 높이 스태틱 고정 */
+.cked-custom-stretch .ck-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100% !important;
+  min-height: 0; /* 🔑 min-h-0; 에서 표준 CSS 규격으로 수정 */
+  overflow: hidden; /* 🔑 테두리가 삐져나가지 않도록 라운드 캡슐 가드 장착 */
+}
+.cked-custom-stretch .ck-editor__main {
+  flex: 1;
+  min-height: 0; /* 🔑 min-h-0; 에서 표준 CSS 규격으로 수정 */
+  overflow-y: auto;
+}
+.cked-custom-stretch .ck-content {
+  height: 100% !important;
+  min-height: 280px !important;
 }
