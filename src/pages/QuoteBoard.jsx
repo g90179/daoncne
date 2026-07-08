@@ -2,11 +2,16 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_URL } from '../config';
+import Pagination from '../components/Pagination'; // 🔑 공통 페이징 모듈 임포트
 
 const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [boardList, setBoardList] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  // 🔑 페이징 처리 전용 상태값 추가 (초기값: 1페이지)
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10; // 테이블 형태 리스트는 10개 노출이 표준 규격입니다.
 
   // 🔎 상세 보기 및 제어 상태들
   const [selectedQuote, setSelectedQuote] = useState(null);
@@ -166,6 +171,7 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
       alert('견적 문의가 정상적으로 접수되었습니다.');
       setFormData({ company: '', name: '', phone: '', email: '', title: '', content: '', isSecret: true, password: '', privacyAgreement: false });
       setCaptchaInput('');
+      setCurrentPage(1); // 🔑 글 작성 완료 후 목록으로 갈 때 1페이지로 리셋
       setActiveTab('list');
     } catch (error) {
       alert('서버 네트워크 통신이 원활하지 않습니다. 잠시 후 다시 전송해 주세요.');
@@ -197,6 +203,13 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
     }
   };
 
+  // 🔑 [페이징 수학 연산 구역 세팅]
+  const totalPages = Math.ceil(boardList.length / ITEMS_PER_PAGE);
+  const indexOfLastItem = currentPage * ITEMS_PER_PAGE;
+  const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE;
+  // 현재 페이지에 해당하는 데이터만 조각내기(slice)
+  const currentQuotes = boardList.slice(indexOfFirstItem, indexOfLastItem);
+
   return (
     <div className="w-full min-h-screen bg-neutral-50 pt-28 pb-20 px-6 md:px-12">
       <div className="max-w-4xl mx-auto">
@@ -217,49 +230,61 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
 
         {/* 📋 상태 1: 리스트화면 */}
         {!selectedQuote && activeTab === 'list' && (
-          <div className="bg-white rounded-2xl border border-neutral-200/60 shadow-sm overflow-hidden">
-            <table className="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr className="bg-neutral-50 text-neutral-400 font-medium text-xs border-b border-neutral-200">
-                  <th className="py-4 px-4 w-16 text-center">번호</th>
-                  <th className="py-4 px-4">제목</th>
-                  <th className="py-4 px-4 w-28 text-center">작성자</th>
-                  <th className="py-4 px-4 w-32 text-center">등록일</th>
-                  <th className="py-4 px-4 w-28 text-center">상태</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100 text-neutral-700">
-                {isLoading ? (
-                  <tr><td colSpan="5" className="py-12 text-center text-neutral-400 text-xs">로딩 중...</td></tr>
-                ) : boardList.length === 0 ? (
-                  <tr><td colSpan="5" className="py-12 text-center text-neutral-400 text-xs">등록된 내역이 없습니다.</td></tr>
-                ) : (
-                  boardList.map((post) => (
-                    <tr key={post.id} className="hover:bg-neutral-50/50 cursor-pointer transition-colors" onClick={() => handleRowClick(post)}>
-                      <td className="py-4 px-4 text-center text-neutral-400 text-xs">{post.id}</td>
-                      <td className="py-4 px-4 font-medium text-neutral-900">
-                        <div className="flex items-center gap-2">
-                          {post.isSecret && (
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5 text-neutral-400"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>
-                          )}
-                          <span className="truncate block max-w-[200px] sm:max-w-none">{post.title}</span>
-                        </div>
-                      </td>
-                      {/* 🛡️ 작성자 이름이 길어져도 꺾이지 않도록 처리 */}
-                      <td className="py-4 px-4 text-center text-xs text-neutral-500 whitespace-nowrap">{post.name}</td>{/*post.name?.charAt(0) + '*'*/}
-                      <td className="py-4 px-4 text-center text-xs text-neutral-400 whitespace-nowrap">{post.createdAt?.split('T')[0]}</td>
-                      <td className="py-4 px-4 text-center">
-                        {/* 🛡️ 뱃지 내 텍스트 크기를 11px로 조절하고 줄바꿈을 완전 봉쇄(whitespace-nowrap) */}
-                        <span className={`inline-block text-[11px] font-bold px-2.5 py-1 rounded-md whitespace-nowrap ${post.status === '답변완료' ? 'bg-neutral-900 text-white' : 'bg-neutral-100 text-neutral-500'}`}>
-                          {post.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <div className="bg-white rounded-2xl border border-neutral-200/60 shadow-sm overflow-hidden">
+              <table className="w-full text-left border-collapse text-sm">
+                <thead>
+                  <tr className="bg-neutral-50 text-neutral-400 font-medium text-xs border-b border-neutral-200">
+                    <th className="py-4 px-4 w-16 text-center">번호</th>
+                    <th className="py-4 px-4">제목</th>
+                    <th className="py-4 px-4 w-28 text-center">작성자</th>
+                    <th className="py-4 px-4 w-32 text-center">등록일</th>
+                    <th className="py-4 px-4 w-28 text-center">상태</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100 text-neutral-700">
+                  {isLoading ? (
+                    <tr><td colSpan="5" className="py-12 text-center text-neutral-400 text-xs">로딩 중...</td></tr>
+                  ) : boardList.length === 0 ? (
+                    <tr><td colSpan="5" className="py-12 text-center text-neutral-400 text-xs">등록된 내역이 없습니다.</td></tr>
+                  ) : (
+                    /* 🔑 전체 리스트였던 boardList 대신 슬라이싱된 currentQuotes 배열을 맵핑 */
+                    currentQuotes.map((post) => (
+                      <tr key={post.id} className="hover:bg-neutral-50/50 cursor-pointer transition-colors" onClick={() => handleRowClick(post)}>
+                        <td className="py-4 px-4 text-center text-neutral-400 text-xs">{post.id}</td>
+                        <td className="py-4 px-4 font-medium text-neutral-900">
+                          <div className="flex items-center gap-2">
+                            {post.isSecret && (
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5 text-neutral-400"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>
+                            )}
+                            <span className="truncate block max-w-[200px] sm:max-w-none">{post.title}</span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 text-center text-xs text-neutral-500 whitespace-nowrap">{post.name}</td>
+                        <td className="py-4 px-4 text-center text-xs text-neutral-400 whitespace-nowrap">{post.createdAt?.split('T')[0]}</td>
+                        <td className="py-4 px-4 text-center">
+                          <span className={`inline-block text-[11px] font-bold px-2.5 py-1 rounded-md whitespace-nowrap ${post.status === '답변완료' ? 'bg-neutral-900 text-white' : 'bg-neutral-100 text-neutral-500'}`}>
+                            {post.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* 🔑 [페이징 바 장착] 로딩 중이 아니고 데이터가 한 개 이상 존재할 때만 하단에 렌더링 */}
+            {!isLoading && boardList.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={(page) => {
+                  setCurrentPage(page);
+                }}
+              />
+            )}
+          </>
         )}
 
         {/* 🔍 상태 2: 상세 보기 화면 (수정 모드 분기 포함) */}
@@ -302,7 +327,7 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
                   <div><label className="block text-xs font-semibold text-neutral-400 mb-1">연락처</label><input type="text" required className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-2.5" value={selectedQuote.phone} onChange={(e) => setSelectedQuote({...selectedQuote, phone: e.target.value})} /></div>
                 </div>
                 <div><label className="block text-xs font-semibold text-neutral-400 mb-1">문의 제목</label><input type="text" required className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-2.5" value={selectedQuote.title} onChange={(e) => setSelectedQuote({...selectedQuote, title: e.target.value})} /></div>
-                <div><label className="block text-xs font-semibold text-neutral-400 mb-1">상세 내역</label><textarea required rows={5} className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-2.5 resize-none" value={selectedQuote.content} onChange={(e) => setSelectedQuote({...selectedQuote, content: e.target.value})} /></div>
+                <div><label className="block text-xs font-semibold text-neutral-400 mb-1">상세 내역 기재</label><textarea required rows={5} className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-2.5 resize-none" value={selectedQuote.content} onChange={(e) => setSelectedQuote({...selectedQuote, content: e.target.value})} /></div>
                 <div><label className="block text-xs font-semibold text-neutral-400 mb-1">본인 인증 비밀번호 재확인</label><input type="password" required placeholder="기존 글 비밀번호를 입력하세요." className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-2.5" value={selectedQuote.password || ''} onChange={(e) => setSelectedQuote({...selectedQuote, password: e.target.value})} /></div>
                 <div className="flex justify-end gap-2 pt-2"><button type="button" onClick={() => setIsEditMode(false)} className="text-xs border px-4 py-2 rounded-xl">취소</button><button type="submit" className="text-xs bg-neutral-950 text-white font-bold px-4 py-2 rounded-xl">수정 완료</button></div>
               </form>
@@ -390,7 +415,7 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
                   <div className="bg-neutral-900 text-neutral-100 font-mono font-bold text-sm px-4 py-2.5 rounded-xl min-w-[85px] text-center select-none shadow-inner">
                     {captchaInfo.question || '로드 중...'}
                   </div>
-                  <button type="button" onClick={fetchCaptcha} className="p-2.5 text-neutral-400 hover:text-neutral-600 border bg-white rounded-xl shadow-sm"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg></button>
+                  <button type="button" onClick={fetchCaptcha} className="p-2.5 text-neutral-400 hover:text-neutral-600 border bg-white rounded-xl shadow-sm"><svg xmlns="http://www.w3.org/2000/xl" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg></button>
                   <input type="text" required placeholder="정답" value={captchaInput} onChange={(e) => setCaptchaInput(e.target.value)} className="w-24 text-sm border border-blue-200 rounded-xl px-3 py-2.5 text-center font-bold text-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-900 bg-white" />
                 </div>
               </div>
