@@ -11,7 +11,6 @@ const formatPhone = (num) => {
   return cleaned.replace(/^(\d{3})(\d{3,4})(\d{4})$/, '$1-$2-$3');
 };
 
-// 🔑 상위 AdminDashboard.jsx 로부터 loggedInEmail 프롭스를 내려받습니다.
 const AdminUserAdmin = ({ loggedInEmail }) => {
   const [users, setUsers] = useState([]);
   const [userPage, setUserPage] = useState(1);
@@ -37,7 +36,6 @@ const AdminUserAdmin = ({ loggedInEmail }) => {
     return config;
   });
 
-  // 🔑 현재 로그인 중인 아이디 정보를 백엔드 차단 쿼리에 연동 바인딩
   const fetchUsers = async () => {
     try { 
       const res = await axiosInstance.get(`/users?requestingEmail=${loggedInEmail || ''}`); 
@@ -45,7 +43,7 @@ const AdminUserAdmin = ({ loggedInEmail }) => {
     } catch (e) {}
   };
 
-  useEffect(() => { fetchUsers(); }, [loggedInEmail]); // 이메일 정보 갱신 시 재페치
+  useEffect(() => { fetchUsers(); }, [loggedInEmail]);
 
   const handleCreateUser = async () => {
     if (!newEmail || !newPassword) { alert('이메일과 비밀번호를 입력해 주세요.'); return; }
@@ -75,10 +73,12 @@ const AdminUserAdmin = ({ loggedInEmail }) => {
 
   return (
     <div className="max-w-12xl mx-auto animate-fadeIn">
+      
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
         
         {/* 👈 좌측 배치: 마스터 계정 리스트 플랫 카드 */}
         <div className="bg-white/90 backdrop-blur-md p-6 md:p-8 rounded-[2.5rem] shadow-[0_25px_60px_rgba(0,0,0,0.02)] border border-white/70 flex flex-col justify-between h-[760px] transition-all">
+          
           <div className="border-b border-slate-100 pb-3 mb-2 px-1">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
               마스터 계정 대기열 ({users.length})
@@ -126,11 +126,18 @@ const AdminUserAdmin = ({ loggedInEmail }) => {
                       <div className="flex items-center gap-1">
                         <button onClick={() => { setEditingUser(u); setEditEmail(u.email); setEditName(u.name || ''); setEditPhone(u.phone || ''); setEditRole(u.role || '일반 관리자'); }} className="cursor-pointer text-[11px] font-bold px-3 py-1.5 rounded-xl bg-blue-50 text-blue-500 hover:bg-blue-100 transition-all active:scale-95 whitespace-nowrap">수정</button>
                         
-                        {/* 🔑 보호 계정의 경우 화면 단에서 삭제 버튼 인쇄 자체를 완전 차단 생략 */}
                         {u.email !== 'hello.g901@kakao.com' ? (
                           <button onClick={async () => { if(confirm('삭제하시겠습니까?')) { await axiosInstance.delete(`/users/${u.id}`); fetchUsers(); } }} className="cursor-pointer text-[11px] font-bold px-3 py-1.5 rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-100 transition-all active:scale-95 whitespace-nowrap">삭제</button>
                         ) : (
-                          <span className="text-[10px] text-slate-300 font-bold px-3 py-1.5 select-none tracking-tight">영구 보호됨</span>
+                          /* 🔑 [UI/UX 디자인 변형 완료] 텍스트 대신 정교하게 설계된 Soft-UI 컨셉의 방패 수호 배지를 렌더링합니다. */
+                          <div 
+                            className="px-3 py-1.5 rounded-xl bg-purple-50 text-purple-400 border border-purple-100/70 flex items-center justify-center shadow-sm select-none transition-all duration-300 hover:bg-purple-100/50" 
+                            title="시스템 보호 계정 (삭제 불가)"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                            </svg>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -146,7 +153,7 @@ const AdminUserAdmin = ({ loggedInEmail }) => {
           </div>
         </div>
 
-        {/* 👉 우측 배치: 폼 서브 컨트롤러 구역 */}
+        {/* 👉 우측 배치: 신규 계정 빌더 및 정보 변경 폼 에디터 */}
         <div className="bg-white/90 backdrop-blur-md p-6 md:p-8 rounded-[2.5rem] shadow-[0_25px_60px_rgba(0,0,0,0.02)] border border-white/70 h-[760px] overflow-y-auto custom-scrollbar transition-all">
           {editingUser ? (
             <div className="space-y-5 text-left animate-fadeIn">
@@ -158,7 +165,6 @@ const AdminUserAdmin = ({ loggedInEmail }) => {
               <div className="space-y-4 pt-1">
                 <div className="space-y-1.5">
                   <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">로그인 이메일 계정 *</label>
-                  {/* 🔑 보호 계정은 정보 수정 시에도 이메일 주소 변경칸을 읽기 전용(readOnly)처리하여 오조작 방지 */}
                   <input type="text" readOnly={editingUser.email === 'hello.g901@kakao.com'} className="w-full bg-slate-50/60 border border-slate-200/50 rounded-2xl px-5 py-3.5 text-sm text-[oklch(0.38_0.07_259.56)] font-medium outline-none focus:bg-white focus:border-blue-400 transition-all disabled:opacity-70" value={editEmail} onChange={e => setEditEmail(e.target.value)} />
                 </div>
 
