@@ -1,6 +1,6 @@
 // daon-frontend/src/App.jsx
 import React, { useState, useEffect } from 'react';
-// 🔑 [핵심 변경] BrowserRouter 대신 실서버 404를 원천 차단하는 HashRouter를 도입합니다.
+// 🔑 실서버 404를 원천 차단하는 HashRouter 규격을 유지합니다.
 import { HashRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import HomeView from './components/HomeView';
@@ -121,7 +121,9 @@ function App() {
       setLoggedInEmail(email);
       setIsLoggedIn(true);
       setShowLoginModal(false);
-      window.location.href = '/#/admin'; // 🔑 해시 라우터 규격에 맞춰 주소 분기 변경
+      
+      // 🔑 [주소 전환 완료] 로그인 성공 시 새로운 은닉 주소인 amddashboard 로 진입시킵니다.
+      window.location.href = '/#/amddashboard'; 
     } catch (e) { alert('로그인 정보가 틀렸습니다.'); }
   };
   
@@ -132,7 +134,6 @@ function App() {
   };
 
   return (
-    // 🔑 BrowserRouter 대신 HashRouter 레이어로 교체 감싸기 완료
     <HashRouter>
       <AdminAuthManager 
         showLoginModal={showLoginModal}
@@ -163,9 +164,9 @@ function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
         </Route>
 
-        {/* 🛠️ 관리자 전용 독립 페이지 라우트 */}
+        {/* 🛠️ 🔑 [주소 전환 완료] 관리자 대시보드 엔드포인트를 /amddashboard 로 변경 라우팅합니다. */}
         <Route 
-          path="/admin" 
+          path="/amddashboard" 
           element={
             <AdminDashboard 
               isLoggedIn={isLoggedIn}

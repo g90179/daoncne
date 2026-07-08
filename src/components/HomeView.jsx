@@ -1,11 +1,10 @@
-// daon-frontend\src\components\HomeView.jsx
-import React, { useState, useEffect } from 'react'; // 🔑 useState 추가
+// daon-frontend/src/components/HomeView.jsx
+import React, { useState, useEffect } from 'react'; 
 import { useLocation } from 'react-router-dom'; 
 import PostView from './PostView';
 import MainVideoBanner from './MainVideoBanner'; 
 import { API_URL } from '../config';
 
-// 🔑 외부 의존성 목록에서 selectedPost, setSelectedPost 프롭스를 완전히 제거했습니다.
 const HomeView = ({ 
   posts, 
   activeTab, 
@@ -13,8 +12,16 @@ const HomeView = ({
 }) => {
   const location = useLocation();
   
-  // 🔑 [핵심 수정] 아카이브 디테일 팝업 전용 로컬 훅 상태를 내부에 선언했습니다.
   const [selectedPost, setSelectedPost] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  
+  // lg:grid-cols-4(4열) 환경에서 항상 정갈하게 3줄(3 rows)을 유지하기 위한 절대 기조 (4 * 3 = 12)
+  const ITEMS_PER_PAGE = 12;
+
+  // 카테고리 탭 변경 감지 시 페이징 인덱스를 1페이지로 자동 회귀 조치
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab]);
 
   // 다른 페이지에서 해시(#archive)를 들고 들어오거나 posts가 바뀔 때 정확히 저격 스크롤
   useEffect(() => {
@@ -29,6 +36,10 @@ const HomeView = ({
       return () => clearTimeout(timer);
     }
   }, [location.hash, posts]); 
+
+  // 페이징 슬라이싱 연산 기동
+  const totalPages = Math.ceil((posts || []).length / ITEMS_PER_PAGE);
+  const currentPosts = (posts || []).slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   return (
     <div className="w-full bg-white text-neutral-900 flex flex-col font-sans antialiased">
@@ -56,7 +67,7 @@ const HomeView = ({
                     <button 
                       key={tab} 
                       onClick={() => setActiveTab(tab)} 
-                      className={`pb-1 transition-all relative ${
+                      className={`pb-1 transition-all relative cursor-pointer ${
                         activeTab === tab 
                           ? 'text-neutral-900 font-bold border-b-2 border-neutral-900' 
                           : 'text-neutral-400 hover:text-neutral-900'
@@ -70,7 +81,7 @@ const HomeView = ({
               
               {/* 격자 그리드 */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-12 gap-y-12">
-                {posts.map(post => {
+                {currentPosts.map(post => {
                   const imageFile = post.files?.find(f => f.type === 'image');
                   const videoFile = post.files?.find(f => f.type === 'video' || f.url?.toLowerCase().endsWith('.mp4'));
 
@@ -124,6 +135,35 @@ const HomeView = ({
               {posts.length === 0 && (
                 <div className="w-full text-center py-32 border border-dashed border-neutral-200 mt-6">
                   <p className="text-neutral-400 text-xs font-medium tracking-widest uppercase">No projects cataloged in this filter</p>
+                </div>
+              )}
+
+              {/* 🔑 [프리미엄 도트 페이징 유닛] 콘텐츠 간격을 정확히 반(mt-10)으로 쪼개고 경계선을 구성했습니다. */}
+              {totalPages > 1 && (
+                <div className="mt-10 pt-4 border-t border-neutral-100 flex justify-center">
+                  {/* 🔑 버튼간의 간격을 기존 간격 대비 1/3 이상 가볍게 당겨 압축한 갭 세팅(gap-1.5) 주입 */}
+                  <div className="flex items-center gap-3 py-1">
+                    {Array.from({ length: totalPages }).map((_, idx) => {
+                      const pageNumber = idx + 1;
+                      const isActive = currentPage === pageNumber;
+                      return (
+                        <button
+                          key={pageNumber}
+                          onClick={() => {
+                            setCurrentPage(pageNumber);
+                            document.getElementById('archive')?.scrollIntoView({ behavior: 'smooth' });
+                          }}
+                          // 숫자를 삭제하고 원형 도트(rounded-full w-2 h-2) 인터페이스 스킨으로 오버홀 마감
+                          className={`w-2 h-2 rounded-full transition-all duration-300 cursor-pointer outline-none ${
+                            isActive 
+                              ? 'bg-neutral-900 scale-125 shadow-sm' 
+                              : 'bg-neutral-200 hover:bg-neutral-400'
+                          }`}
+                          title={`${pageNumber}페이지로 이동`}
+                        />
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 

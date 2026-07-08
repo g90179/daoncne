@@ -11,7 +11,8 @@ const formatPhone = (num) => {
   return cleaned.replace(/^(\d{3})(\d{3,4})(\d{4})$/, '$1-$2-$3');
 };
 
-const AdminUserAdmin = () => {
+// 🔑 상위 AdminDashboard.jsx 로부터 loggedInEmail 프롭스를 내려받습니다.
+const AdminUserAdmin = ({ loggedInEmail }) => {
   const [users, setUsers] = useState([]);
   const [userPage, setUserPage] = useState(1);
   const USERS_PER_PAGE = 5;
@@ -36,11 +37,15 @@ const AdminUserAdmin = () => {
     return config;
   });
 
+  // 🔑 현재 로그인 중인 아이디 정보를 백엔드 차단 쿼리에 연동 바인딩
   const fetchUsers = async () => {
-    try { const res = await axiosInstance.get('/users'); setUsers(res.data); } catch (e) {}
+    try { 
+      const res = await axiosInstance.get(`/users?requestingEmail=${loggedInEmail || ''}`); 
+      setUsers(res.data); 
+    } catch (e) {}
   };
 
-  useEffect(() => { fetchUsers(); }, []);
+  useEffect(() => { fetchUsers(); }, [loggedInEmail]); // 이메일 정보 갱신 시 재페치
 
   const handleCreateUser = async () => {
     if (!newEmail || !newPassword) { alert('이메일과 비밀번호를 입력해 주세요.'); return; }
@@ -70,21 +75,16 @@ const AdminUserAdmin = () => {
 
   return (
     <div className="max-w-12xl mx-auto animate-fadeIn">
-      
-      {/* 🔄 [1:1 대칭 가속] 좌우 벨런스 50% 분할 및 세로 높이를 h-[760px] 레이어로 고정 정렬 */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
         
         {/* 👈 좌측 배치: 마스터 계정 리스트 플랫 카드 */}
         <div className="bg-white/90 backdrop-blur-md p-6 md:p-8 rounded-[2.5rem] shadow-[0_25px_60px_rgba(0,0,0,0.02)] border border-white/70 flex flex-col justify-between h-[760px] transition-all">
-          
-          {/* 플랫 서브 타이틀 헤더 */}
           <div className="border-b border-slate-100 pb-3 mb-2 px-1">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
               마스터 계정 대기열 ({users.length})
             </h3>
           </div>
 
-          {/* 유저 리스트 피드 본문 존 (테두리 최소화 및 하단 보더 리스트화) */}
           <div className="overflow-y-auto pr-2 custom-scrollbar flex-1 mb-4">
             {users.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-slate-400 text-xs font-medium space-y-2 py-20">
@@ -96,7 +96,6 @@ const AdminUserAdmin = () => {
                 {currentUsers.map(u => (
                   <div key={u.id} className="group flex items-center justify-between py-4 px-1 hover:bg-slate-50/60 transition-all duration-200">
                     
-                    {/* 프로필 이미지 아이콘 감성 서클 래퍼 */}
                     <div className="flex items-center gap-4 min-w-0 flex-1">
                       <div className="w-11 h-11 rounded-full bg-slate-100 border border-slate-200/40 flex items-center justify-center shrink-0 shadow-inner">
                         <span className="text-xs font-bold text-slate-400 uppercase">
@@ -104,7 +103,6 @@ const AdminUserAdmin = () => {
                         </span>
                       </div>
 
-                      {/* 유저 세부 타이포 정보단 */}
                       <div className="min-w-0 flex-1">
                         <h4 className="text-sm font-bold text-[oklch(0.38_0.07_259.56)] truncate group-hover:text-blue-500 transition-colors">
                           {u.name ? `${u.name}` : '이름 없음'}
@@ -116,9 +114,7 @@ const AdminUserAdmin = () => {
                       </div>
                     </div>
 
-                    {/* 권한 상태 표시 배지 및 제어판 */}
                     <div className="flex items-center shrink-0 pl-4 gap-4">
-                      {/* 권한 등급 캡슐 뱃지 스타일 튜닝 */}
                       <span className={`text-[10px] font-bold px-2.5 py-1 rounded-xl transition shadow-sm ${
                         u.role === '최고 관리자' 
                           ? 'bg-purple-50 text-purple-500 border border-purple-100' 
@@ -129,7 +125,13 @@ const AdminUserAdmin = () => {
 
                       <div className="flex items-center gap-1">
                         <button onClick={() => { setEditingUser(u); setEditEmail(u.email); setEditName(u.name || ''); setEditPhone(u.phone || ''); setEditRole(u.role || '일반 관리자'); }} className="cursor-pointer text-[11px] font-bold px-3 py-1.5 rounded-xl bg-blue-50 text-blue-500 hover:bg-blue-100 transition-all active:scale-95 whitespace-nowrap">수정</button>
-                        <button onClick={async () => { if(confirm('삭제하시겠습니까?')) { await axiosInstance.delete(`/users/${u.id}`); fetchUsers(); } }} className="cursor-pointer text-[11px] font-bold px-3 py-1.5 rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-100 transition-all active:scale-95 whitespace-nowrap">삭제</button>
+                        
+                        {/* 🔑 보호 계정의 경우 화면 단에서 삭제 버튼 인쇄 자체를 완전 차단 생략 */}
+                        {u.email !== 'hello.g901@kakao.com' ? (
+                          <button onClick={async () => { if(confirm('삭제하시겠습니까?')) { await axiosInstance.delete(`/users/${u.id}`); fetchUsers(); } }} className="cursor-pointer text-[11px] font-bold px-3 py-1.5 rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-100 transition-all active:scale-95 whitespace-nowrap">삭제</button>
+                        ) : (
+                          <span className="text-[10px] text-slate-300 font-bold px-3 py-1.5 select-none tracking-tight">영구 보호됨</span>
+                        )}
                       </div>
                     </div>
 
@@ -139,16 +141,14 @@ const AdminUserAdmin = () => {
             )}
           </div>
 
-          {/* 하단 투명 페이징 인덱스바 */}
           <div className="pt-4 border-t border-slate-100/60">
             <Pagination currentPage={userPage} totalPages={totalUserPages} onPageChange={setUserPage} />
           </div>
         </div>
 
-        {/* 👉 우측 배치: 신규 계정 빌더 및 정보 변경 폼 에디터 */}
+        {/* 👉 우측 배치: 폼 서브 컨트롤러 구역 */}
         <div className="bg-white/90 backdrop-blur-md p-6 md:p-8 rounded-[2.5rem] shadow-[0_25px_60px_rgba(0,0,0,0.02)] border border-white/70 h-[760px] overflow-y-auto custom-scrollbar transition-all">
           {editingUser ? (
-            // 🛠️ 1) 계정 정보 수정 모드 활성화 시
             <div className="space-y-5 text-left animate-fadeIn">
               <div className="flex justify-between items-center border-b border-slate-100 pb-3">
                 <h3 className="text-base font-bold text-[oklch(0.38_0.07_259.56)] tracking-tight">🛠️ 계정 세부 정보 수정</h3>
@@ -158,7 +158,8 @@ const AdminUserAdmin = () => {
               <div className="space-y-4 pt-1">
                 <div className="space-y-1.5">
                   <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">로그인 이메일 계정 *</label>
-                  <input type="text" className="w-full bg-slate-50/60 border border-slate-200/50 rounded-2xl px-5 py-3.5 text-sm text-[oklch(0.38_0.07_259.56)] font-medium outline-none focus:bg-white focus:border-blue-400 focus:ring-4 focus:ring-blue-400/5 transition-all duration-300" value={editEmail} onChange={e => setEditEmail(e.target.value)} />
+                  {/* 🔑 보호 계정은 정보 수정 시에도 이메일 주소 변경칸을 읽기 전용(readOnly)처리하여 오조작 방지 */}
+                  <input type="text" readOnly={editingUser.email === 'hello.g901@kakao.com'} className="w-full bg-slate-50/60 border border-slate-200/50 rounded-2xl px-5 py-3.5 text-sm text-[oklch(0.38_0.07_259.56)] font-medium outline-none focus:bg-white focus:border-blue-400 transition-all disabled:opacity-70" value={editEmail} onChange={e => setEditEmail(e.target.value)} />
                 </div>
 
                 <div className="space-y-1.5">
@@ -178,7 +179,7 @@ const AdminUserAdmin = () => {
 
                 <div className="space-y-1.5">
                   <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">대시보드 오퍼레이션 권한 등급</label>
-                  <select className="w-full bg-slate-50/60 border border-slate-200/50 rounded-2xl px-5 py-3.5 text-sm text-[oklch(0.38_0.07_259.56)] font-semibold outline-none focus:bg-white focus:border-blue-400 transition-all cursor-pointer" value={editRole} onChange={e => setEditRole(e.target.value)}>
+                  <select disabled={editingUser.email === 'hello.g901@kakao.com'} className="w-full bg-slate-50/60 border border-slate-200/50 rounded-2xl px-5 py-3.5 text-sm text-[oklch(0.38_0.07_259.56)] font-semibold outline-none focus:bg-white focus:border-blue-400 transition-all cursor-pointer" value={editRole} onChange={e => setEditRole(e.target.value)}>
                     <option value="일반 관리자">일반 관리자</option>
                     <option value="최고 관리자">최고 관리자</option>
                   </select>
@@ -192,7 +193,6 @@ const AdminUserAdmin = () => {
               </div>
             </div>
           ) : (
-            // 👤 2) 신규 계정 등록 폼 활성화 시
             <div className="space-y-5 text-left">
               <div className="border-b border-slate-100 pb-3">
                 <h3 className="text-base font-bold text-[oklch(0.38_0.07_259.56)] tracking-tight">👤 신규 계정 인프라 등록</h3>
