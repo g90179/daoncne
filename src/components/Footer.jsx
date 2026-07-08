@@ -74,7 +74,7 @@ const Footer = ({ companyInfo, isMapScriptLoaded }) => {
           
           {/* 👈 좌측 영역: 회사 정보 상세 표출단 */}
           <div className="flex-1 w-full space-y-4">
-            <div className="text-lg font-normal tracking-tight text-neutral-900">
+            <div className="text-lg font-normal tracking-tight text-neutral-900 text-left">
               daon<span className="font-bold">cne</span>
             </div>
 
@@ -82,7 +82,6 @@ const Footer = ({ companyInfo, isMapScriptLoaded }) => {
               <InfoRow label="상호" value={companyInfo?.name} />
               <InfoRow label="대표자" value={companyInfo?.ceo} />
               
-              {/* 🔑 [핵심 수정] 요청하신 네이버 검색 파라미터 링크 결합 및 UI 배지 교체 */}
               <InfoRow 
                 label="사업자등록번호" 
                 value={
@@ -99,10 +98,9 @@ const Footer = ({ companyInfo, isMapScriptLoaded }) => {
                         <span>
                           <svg 
                             xmlns="http://www.w3.org/2000/svg" 
-                            fill="none" // 🔑 내부 채우기 없이 투명하게 유지
+                            fill="none" 
                             viewBox="0 0 24 24" 
                             strokeWidth={2.5} 
-                            // 🔑 오직 stroke(선) 색상만 blue-400 -> 호버 시 blue-500으로 변경합니다.
                             className="w-3 h-3 stroke-blue-400 group-hover:stroke-blue-500 transition-colors duration-200"
                           >
                             <path 
@@ -158,13 +156,37 @@ const Footer = ({ companyInfo, isMapScriptLoaded }) => {
               </div>
             )}
           </div>
-          
         </div>
 
-        {/* 카피라이트 */}
-        <p className="text-[10px] text-neutral-400 pt-3 border-t border-neutral-100 font-medium mt-4">
-          © {new Date().getFullYear()} {companyInfo?.name || 'Daon CNE'}. All rights reserved.
-        </p>
+        {/* 카피라이트 & 약관 통합 싱글 라인 플레이트 */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-neutral-400 pt-3 border-t border-neutral-100 font-medium mt-4 text-left">
+          <Link
+            to="/policy"
+            state={{ tab: 'TERMS' }} // 약관 컴포넌트 내부 런타임 탭 분기용 시그널
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="text-neutral-400 hover:text-neutral-800 transition-colors cursor-pointer"
+          >
+            이용약관
+          </Link>
+          
+          <span className="text-neutral-200 select-none text-[9px]">|</span>
+          
+          <Link
+            to="/policy"
+            state={{ tab: 'PRIVACY' }} // 개인정보 내부 런타임 탭 분기용 시그널
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="text-neutral-500 hover:text-blue-500 transition-colors font-black cursor-pointer"
+          >
+            개인정보처리방침
+          </Link>
+          
+          {/* 🔑 데스크톱 이상 화면에서만 노출되는 세련된 미니 구동점(Bullet) 구분자 */}
+          <span className="text-neutral-200 select-none hidden sm:inline text-[9px]">|</span>
+          
+          <span className="text-neutral-400 block sm:inline">
+            © {new Date().getFullYear()} {companyInfo?.name || 'Daon CNE'}. All rights reserved.
+          </span>
+        </div>
       </div>
 
     </footer>
