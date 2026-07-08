@@ -1,10 +1,12 @@
 // daon-frontend/src/App.jsx
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import HomeView from './components/HomeView';
 import QuoteBoard from './pages/QuoteBoard';
-import AdminDashboard from './pages/admin/AdminDashboard'; // 🔑 새로 분리한 파일 임포트
+import AdminDashboard from './pages/admin/AdminDashboard';
+import ForgotPassword from './pages/admin/ForgotPassword'; // 🔑 비밀번호 찾기 메일 요청 페이지 임포트
+import ResetPassword from './pages/admin/ResetPassword';   // 🔑 인스턴스키 검증 및 변경 페이지 임포트
 import axiosOriginal from 'axios';
 import { API_URL } from './config';
 import 'ckeditor5/ckeditor5.css';
@@ -25,7 +27,7 @@ function App() {
   const [companyInfo, setCompanyInfo] = useState({});
   const [isMapScriptLoaded, setIsMapScriptLoaded] = useState(false);
 
-  // 1. Axios 글로벌 인터셉터 기동 (JWT 2단계 단기/장기 토큰 재발급 자동화 엔진)
+  // 1. Axios 글로벌 인터셉터 기동
   const axiosInstance = axiosOriginal.create({ baseURL: API_URL });
   
   axiosInstance.interceptors.request.use((config) => {
@@ -57,7 +59,7 @@ function App() {
     }
   );
 
-  // 2. 카카오맵 SDK 수동 로딩 프로세스 (Footer 및 Admin 공유용)
+  // 2. 카카오맵 SDK 수동 로딩 프로세스
   useEffect(() => {
     if (window.kakao && window.kakao.maps) {
       setIsMapScriptLoaded(true);
@@ -89,8 +91,6 @@ function App() {
     fetchCompanyInfo();
   }, []);
 
-  // 🔑 [핵심 신규 추가] 메인 홈페이지 세팅용 글로벌 트리거 장착!
-  // 초기 마운트 시점 및 사용자가 메인화면/관리자 화면에서 탭을 바꿀 때마다 posts 데이터를 항상 최신화합니다.
   useEffect(() => {
     fetchPosts();
   }, [activeTab]); 
@@ -132,6 +132,15 @@ function App() {
 
   return (
     <BrowserRouter>
+      {/* 🔑 [컨텍스트 브릿지 연결] 조건 4를 수행하기 위한 전역 네비게이션/팝업 감시 트래커 매니저 장착 */}
+      <AdminAuthManager 
+        showLoginModal={showLoginModal}
+        setShowLoginModal={setShowLoginModal}
+        email={email} setEmail={setEmail}
+        password={password} setPassword={setPassword}
+        handleLogin={handleLogin}
+      />
+
       <Routes>
         {/* 🏠 홈페이지 레이아웃 경로 그룹 */}
         <Route element={
@@ -148,9 +157,13 @@ function App() {
             />
           } />
           <Route path="/quotes" element={<QuoteBoard isLoggedIn={isLoggedIn} />} />
+          
+          {/* 🔑 조건 2: 메인 레이아웃 프레임 내부에서 구동되는 비밀번호 탐색 노드 추가 */}
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
         </Route>
 
-        {/* 🛠️ 관리자 전용 독립 페이지 라우트 (독립 컴포넌트로 완벽 분리) */}
+        {/* 🛠️ 관리자 전용 독립 페이지 라우트 */}
         <Route 
           path="/admin" 
           element={
@@ -163,27 +176,76 @@ function App() {
               fetchPosts={fetchPosts}
               activeTab={activeTab}
               setActiveTab={setActiveTab}
-              fetchGlobalCompanyInfo={fetchCompanyInfo} // 대시보드 저장 시 전역 푸터도 동시 갱신
+              fetchGlobalCompanyInfo={fetchCompanyInfo}
             />
           } 
         />
       </Routes>
-
-      {/* 🔐 로그인 모달창 팝업 레이어 */}
-      {showLoginModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[200] px-4">
-          <div className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md relative">
-            <button onClick={() => setShowLoginModal(false)} className="absolute top-6 right-6 text-gray-400 font-bold">✕</button>
-            <h2 className="text-2xl font-black mb-6 text-slate-900 uppercase">Admin Login</h2>
-            <div className="space-y-4">
-              <input type="text" placeholder="Email" className="w-full px-5 py-4 bg-gray-50 rounded-2xl outline-none border" onChange={e => setEmail(e.target.value)} />
-              <input type="password" placeholder="Password" className="w-full px-5 py-4 bg-gray-50 rounded-2xl outline-none border" onChange={e => setPassword(e.target.value)} />
-              <button onClick={handleLogin} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold shadow-lg hover:bg-orange-500 transition">Sign In</button>
-            </div>
-          </div>
-        </div>
-      )}
     </BrowserRouter>
+  );
+}
+
+/**
+ * 🔒 [신규 지원 컴포넌트] AdminAuthManager
+ * BrowserRouter 내부에 위치하여 라우터 전용 훅(useLocation, useNavigate)을 안전하게 활용하고, 
+ * 소프트 UI 컨셉이 가미된 모달 인터페이스 피드를 통합 처리합니다.
+ */
+function AdminAuthManager({ showLoginModal, setShowLoginModal, email, setEmail, password, setPassword, handleLogin }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // 🔑 조건 4: 비밀번호 변경 완료 후 넘어온 트리거 시그널(triggerLogin) 가로채기
+  useEffect(() => {
+    if (location.state?.triggerLogin) {
+      setShowLoginModal(true);
+      // 브라우저 뒤로가기 캐시 찌꺼기 청소 및 상태 초기화
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location, navigate, setShowLoginModal]);
+
+  if (!showLoginModal) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[200] px-4 animate-fadeIn">
+      <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl border border-slate-100 w-full max-w-md relative">
+        <button onClick={() => setShowLoginModal(false)} className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 font-bold transition cursor-pointer">✕</button>
+        <h2 className="text-xl font-bold mb-6 text-[oklch(0.38_0.07_259.56)] uppercase tracking-tight">Admin Desk Login</h2>
+        
+        <div className="space-y-4 text-left">
+          <input 
+            type="text" 
+            placeholder="Email Address" 
+            className="w-full bg-slate-50 border border-slate-200/60 rounded-2xl px-5 py-4 text-sm text-[oklch(0.38_0.07_259.56)] outline-none focus:bg-white focus:border-blue-400 transition" 
+            onChange={e => setEmail(e.target.value)} 
+          />
+          <input 
+            type="password" 
+            placeholder="Password" 
+            className="w-full bg-slate-50 border border-slate-200/60 rounded-2xl px-5 py-4 text-sm text-[oklch(0.38_0.07_259.56)] outline-none focus:bg-white focus:border-blue-400 transition" 
+            onChange={e => setPassword(e.target.value)} 
+          />
+          <button 
+            onClick={handleLogin} 
+            className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold text-xs shadow-lg shadow-slate-900/10 hover:bg-blue-400 hover:shadow-blue-400/20 transition-all active:scale-95 cursor-pointer"
+          >
+            Sign In
+          </button>
+        </div>
+
+        {/* 🔑 조건 1: 비밀번호 찾기 전용 블루 링크 연동 (SPA 라우팅 안전 보장) */}
+        <div className="mt-5 text-center border-t border-slate-100 pt-4">
+          <button 
+            onClick={() => {
+              setShowLoginModal(false); // 기존 로그인 팝업 종료
+              navigate('/forgot-password'); // 비밀번호 찾기 컴포넌트로 워프
+            }}
+            className="text-xs text-slate-400 hover:text-blue-400 font-bold transition cursor-pointer"
+          >
+            비밀번호를 잊으셨나요? (비밀번호 찾기)
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
