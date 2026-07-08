@@ -1,12 +1,10 @@
 // daon-frontend/src/components/Footer.jsx
-import React, { useEffect, useRef, useState } from 'react'; // 🔑 useState 추가
+import React, { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
-import { API_URL } from '../config';
 
 const formatPhone = (num) => {
   if (!num) return '';
-  const cleaned = num.replace(/\D/g, '');
+  const cleaned = num.replace(/\D/g, ''); 
   if (cleaned.startsWith('02')) {
     return cleaned.replace(/^(\d{2})(\d{3,4})(\d{4})$/, '$1-$2-$3');
   }
@@ -22,10 +20,6 @@ const formatBizNumber = (num) => {
 const Footer = ({ companyInfo, isMapScriptLoaded }) => {
   const mapContainerRef = useRef(null);
   const hasCoords = !!(companyInfo?.lat && companyInfo?.lng);
-
-  // 🔑 국세청 실시간 상태 보관용 로컬 변수
-  const [ntsStatus, setNtsStatus] = useState(''); 
-  const [isNtsLoading, setIsNtsLoading] = useState(false);
 
   useEffect(() => {
     if (!isMapScriptLoaded) return;
@@ -49,24 +43,6 @@ const Footer = ({ companyInfo, isMapScriptLoaded }) => {
 
   }, [isMapScriptLoaded, companyInfo?.lat, companyInfo?.lng, hasCoords]);
 
-  // 🔑 [신규 추가] 푸터 내부에서 안전하게 백엔드 프록시를 경유해 국세청 API를 찌르는 함수
-  const handleNtsLookup = async () => {
-    if (!companyInfo?.bizNumber || isNtsLoading) return;
-    
-    setIsNtsLoading(true);
-    setNtsStatus('국세청 조회 중...');
-    
-    try {
-      const cleanNum = companyInfo.bizNumber.replace(/\D/g, '');
-      const res = await axios.get(`${API_URL}/company/nts-check/${cleanNum}`);
-      setNtsStatus(res.data); // 국세청 검증 결과 데이터 주입
-    } catch (err) {
-      setNtsStatus('조회 실패 (네트워크 확인)');
-    } finally {
-      setIsNtsLoading(false);
-    }
-  };
-
   const InfoRow = ({ label, value }) => {
     if (!value) return null;
     return (
@@ -86,19 +62,17 @@ const Footer = ({ companyInfo, isMapScriptLoaded }) => {
           <div ref={mapContainerRef} className="w-full h-full" />
         ) : (
           <div className="w-full h-full bg-neutral-50 flex items-center justify-center">
-            <span className="text-xs font-bold text-neutral-400 tracking-widest uppercase">
-              위치 정보 준비 중
-            </span>
+            <span className="text-xs font-bold text-neutral-400 tracking-widest uppercase">위치 정보 준비 중</span>
           </div>
         )}
       </div>
 
-      {/* 🏢 [레이어 2] 지도 위에 absolute로 떠 있는 회사 정보 카드 */}
+      {/* 🏢 [레이어 2] 지도 위에 떠 있는 회사 정보 카드 */}
       <div className="absolute top-8 left-6 right-6 md:right-16 md:left-auto bg-white/90 backdrop-blur-md p-6 md:p-8 rounded-2xl shadow-2xl border border-neutral-200/50 max-w-full md:w-[700px] z-10 transition-all">
         
         <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8">
           
-          {/* 👈 좌측 영역: 메타데이터 */}
+          {/* 👈 좌측 영역: 회사 정보 상세 표출단 */}
           <div className="flex-1 w-full space-y-4">
             <div className="text-lg font-normal tracking-tight text-neutral-900">
               daon<span className="font-bold">cne</span>
@@ -108,31 +82,37 @@ const Footer = ({ companyInfo, isMapScriptLoaded }) => {
               <InfoRow label="상호" value={companyInfo?.name} />
               <InfoRow label="대표자" value={companyInfo?.ceo} />
               
-              {/* 🔑 [핵심 수정] 이제 외부 링크로 나가지 않고 클릭 시 국세청 실시간 조회가 발동합니다. */}
+              {/* 🔑 [핵심 수정] 요청하신 네이버 검색 파라미터 링크 결합 및 UI 배지 교체 */}
               <InfoRow 
                 label="사업자등록번호" 
                 value={
                   companyInfo?.bizNumber ? (
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 cursor-pointer">
-                      <button 
-                        type="button"
-                        onClick={handleNtsLookup}
-                        className="hover:text-blue-600 hover:underline transition-colors text-neutral-600 font-mono text-left font-bold"
-                        title="클릭 시 국세청 실시간 데이터 확인"
+                    <div className="flex items-center gap-2">
+                      <a 
+                        href={`https://search.naver.com/search.naver?sm=tab_clk.aitabkb&ssc=tab.ait.all&qvt=0&query=${companyInfo.bizNumber.replace(/\D/g, '')}`}
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="group flex items-center gap-1.5 hover:text-blue-400 transition-colors text-neutral-600 font-mono font-bold text-left"
+                        title="클릭 시 네이버에서 사업자번호 정보 검색"
                       >
-                        {formatBizNumber(companyInfo.bizNumber)}
-                      </button>
-                      
-                      {/* 국세청 결과값 동적 레이블 표출 */}
-                      {ntsStatus && (
-                        <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold ${
-                          ntsStatus.includes('일반') || ntsStatus.includes('정상')
-                            ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                            : 'bg-amber-50 text-amber-600 border border-amber-100'
-                        } animate-fadeIn`}>
-                          {ntsStatus}
+                        {formatBizNumber(companyInfo.bizNumber)} 
+                        <span>
+                          <svg 
+                            xmlns="http://www.w3.org/2000/svg" 
+                            fill="none" // 🔑 내부 채우기 없이 투명하게 유지
+                            viewBox="0 0 24 24" 
+                            strokeWidth={2.5} 
+                            // 🔑 오직 stroke(선) 색상만 blue-400 -> 호버 시 blue-500으로 변경합니다.
+                            className="w-3 h-3 stroke-blue-400 group-hover:stroke-blue-500 transition-colors duration-200"
+                          >
+                            <path 
+                              strokeLinecap="round" 
+                              strokeLinejoin="round" 
+                              d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.604 10.604Z" 
+                            />
+                          </svg>
                         </span>
-                      )}
+                      </a>
                     </div>
                   ) : null
                 } 
