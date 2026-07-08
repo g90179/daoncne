@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import axiosOriginal from 'axios';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
-// 🔑 [엔진 업그레이드] AdminPostEditor와 동일한 프리미엄 컴포넌트 플러그인 라인 전면 도입
 import {
   ClassicEditor,
   Bold,
@@ -16,7 +15,9 @@ import {
   TableToolbar,
   TableProperties,
   TableCellProperties,
-  Undo
+  Undo,
+  SourceEditing,
+  GeneralHtmlSupport // 🔑 [품질 보존] 인라인 스타일과 모든 HTML 커스텀 태그 유실을 원천 차단하는 구원투수 플러그인
 } from 'ckeditor5';
 import Pagination from '../../components/Pagination';
 import { API_URL } from '../../config';
@@ -32,7 +33,7 @@ const AdminPolicyAdmin = () => {
   const [type, setType] = useState('PRIVACY');
   const [content, setContent] = useState('');
   const [isExposed, setIsExposed] = useState(false);
-  const [effectiveDate, setEffectiveDate] = useState(''); // 🔑 [신규 추가] 시행일자 상태 선언
+  const [effectiveDate, setEffectiveDate] = useState(''); 
   const [editingId, setEditingId] = useState(null);
 
   const axiosInstance = axiosOriginal.create({ baseURL: API_URL });
@@ -56,15 +57,12 @@ const AdminPolicyAdmin = () => {
   }, [filterType]);
 
   const handleSavePolicy = async () => {
-    // 🔑 [필수 가드] 시행일자 누락 검증 로직 추가
     if (!title || !content || !effectiveDate) { alert('문서 제목, 시행일자, 약관 본문 내용을 입력하세요.'); return; }
     try {
       if (editingId) {
-        // 🔑 [페이로드 동기화] 패치 요청에 시행일자 바인딩
         await axiosInstance.patch(`/policies/${editingId}`, { title, type, content, isExposed, effectiveDate });
         alert('공시 문서가 수정 완료되었습니다.');
       } else {
-        // 🔑 [페이로드 동기화] 포스트 요청에 시행일자 바인딩
         await axiosInstance.post('/policies', { title, type, content, isExposed, effectiveDate });
         alert('새로운 약관 규격이 대기열에 등록되었습니다.');
       }
@@ -79,7 +77,6 @@ const AdminPolicyAdmin = () => {
     setType(p.type);
     setContent(p.content);
     setIsExposed(p.isExposed);
-    // 🔑 [수정 로드] 데이터베이스의 날짜 스트링 앞 10자리(YYYY-MM-DD) 추출 바인딩
     setEffectiveDate(p.effectiveDate ? p.effectiveDate.slice(0, 10) : '');
   };
 
@@ -89,7 +86,7 @@ const AdminPolicyAdmin = () => {
     setType('PRIVACY');
     setContent('');
     setIsExposed(false);
-    setEffectiveDate(''); // 🔑 [기록 청소] 시행일자 인풋 초기화
+    setEffectiveDate(''); 
   };
 
   const totalPages = Math.ceil(policies.length / ITEMS_PER_PAGE);
@@ -98,14 +95,12 @@ const AdminPolicyAdmin = () => {
   return (
     <div className="max-w-12xl mx-auto animate-fadeIn">
       
-      {/* 🔄 [1:1 대칭 매칭] 그리드 구조 */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
         
         {/* 👈 좌측 컬럼: 공시 자원 목록 카드 플레이트 */}
         <div className="bg-white/80 backdrop-blur-xl p-6 md:p-10 rounded-[2.5rem] shadow-[0_30px_70px_rgba(0,0,0,0.02)] border border-white/70 flex flex-col justify-between h-[850px] transition-all duration-500">
           
           <div>
-            {/* 카테고리 바 영역 */}
             <div className="mb-6 flex justify-center sm:justify-start">
               <div className="bg-slate-200/50 backdrop-blur-sm p-1.5 rounded-2xl border border-white/60 flex gap-1 shadow-inner w-full sm:w-auto">
                 {[ ['ALL', '전체'], ['PRIVACY', '개인정보'], ['TERMS', '이용약관'] ].map(([key, label]) => {
@@ -127,7 +122,6 @@ const AdminPolicyAdmin = () => {
               </div>
             </div>
 
-            {/* 스크롤 리스트 피드 존 */}
             <div className="overflow-y-auto pr-2 custom-scrollbar max-h-[620px]">
               {currentPolicies.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-40 text-slate-400 text-xs font-medium space-y-2">
@@ -152,7 +146,6 @@ const AdminPolicyAdmin = () => {
                           )}
                         </div>
                         <h4 className="text-sm font-bold text-slate-800 truncate">{p.title}</h4>
-                        {/* 🔑 [리스트 가시화] 대기열 목록 내부에 시행일자 표시부 바인딩 */}
                         <div className="flex items-center gap-3 text-[10px] text-slate-400 font-mono">
                           <span>등록일: {new Date(p.createdAt).toLocaleDateString()}</span>
                           {p.effectiveDate && (
@@ -177,7 +170,7 @@ const AdminPolicyAdmin = () => {
           </div>
         </div>
 
-        {/* 👉 우측 컬럼: 고도화된 CKEditor 5 에디터 캔버스 */}
+        {/* 👉 우측 컬럼: 스타일 유실 가드가 탑재된 에디터 캔버스 */}
         <div className="bg-white/80 backdrop-blur-xl p-6 md:p-10 rounded-[2.5rem] shadow-[0_30px_70px_rgba(0,0,0,0.02)] border border-white/70 h-[850px] flex flex-col justify-between text-left transition-all duration-500">
           
           <div className="flex-1 flex flex-col min-h-0">
@@ -193,7 +186,6 @@ const AdminPolicyAdmin = () => {
             </div>
 
             <div className="space-y-4 flex-1 flex flex-col min-h-0 overflow-y-auto pr-1 custom-scrollbar">
-              {/* 🔑 [3열 정렬 확장] 기존 sm:grid-cols-2에서 sm:grid-cols-3 구도로 확장하여 캘린더 피커 안착 */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
                   <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">문서 분류 선택 *</label>
@@ -203,7 +195,6 @@ const AdminPolicyAdmin = () => {
                   </select>
                 </div>
 
-                {/* 🔑 [신규 삽입] 시행일자 선택 전용 데이트 피커 구성 */}
                 <div className="space-y-1.5">
                   <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">법적 효력 시행일자 *</label>
                   <input 
@@ -230,28 +221,43 @@ const AdminPolicyAdmin = () => {
                 <input type="text" placeholder="예: 개인정보처리방침 v1.3 (2026년 개정판)" className="w-full bg-slate-50/60 border border-slate-200/50 rounded-2xl px-5 py-3.5 text-sm text-[oklch(0.38_0.07_259.56)] font-medium outline-none focus:bg-white focus:border-blue-400 transition" value={title} onChange={e => setTitle(e.target.value)} />
               </div>
 
-              {/* 📝 CKEditor 5 고도화 엔진 코어 결합 콤팩트 존 */}
+              {/* 📝 CKEditor 5 HTML 소스 코드 편집 파이프라인 탑재 에어리어 */}
               <div className="space-y-1.5 flex-1 flex flex-col min-h-[380px] cked-custom-stretch">
                 <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0">약관 세부 조항 본문 명세 *</label>
                 <div className="flex-1 min-h-0 overflow-hidden border border-slate-200/50 rounded-2xl bg-slate-50/40 focus-within:bg-white focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-400/5 transition-all duration-300 ckeditor-custom-wrapper">
                   <CKEditor
                     editor={ ClassicEditor }
                     config={ {
-                      licenseKey: 'GPL', // 🔑 라이선스 경고 방지
+                      licenseKey: 'GPL',
                       plugins: [ 
                         Essentials, Paragraph, Bold, Italic, Strikethrough, Heading, List, Undo,
-                        Table, TableToolbar, TableProperties, TableCellProperties
-                      ], // 🔑 약관 작성에 적합한 코어 코폴리머 탑재 (이미지/미디어 임베드 제외하여 가볍게 마감)
+                        Table, TableToolbar, TableProperties, TableCellProperties,
+                        SourceEditing,
+                        GeneralHtmlSupport // 🔑 플러그인 로드
+                      ], 
                       toolbar: [
-                        'undo', 'redo', '|', 'heading', '|', 'bold', 'italic', 'strikethrough', '|', 
+                        'undo', 'redo', '|', 
+                        'sourceEditing', '|', 
+                        'heading', '|', 'bold', 'italic', 'strikethrough', '|', 
                         'bulletedList', 'numberedList', '|', 'insertTable'
                       ],
                       table: { 
                         contentToolbar: [ 'tableColumn', 'tableRow', 'mergeTableCells', '|', 'tableProperties', 'tableCellProperties' ] 
                       },
-                      placeholder: '법적 공시에 적합한 약관 상세 조항들을 구조화하여 기입하세요. 표 삽입, 리스트 분류 기능을 지원합니다.'
+                      // 🔑 [핵심 마감 가드] 에디터 내부의 모든 태그명, 클래스명, 인라인 스타일 필터링 해제 선언
+                      htmlSupport: {
+                        allow: [
+                          {
+                            name: /.*/,
+                            attributes: true,
+                            classes: true,
+                            styles: true
+                          }
+                        ]
+                      },
+                      placeholder: '법적 공시에 적합한 약관 상세 조항들을 구조화하여 기입하세요. 소스 편집 모드를 통해 외부 HTML 태그 주입을 지원합니다.'
                     } }
-                    data={ editingId ? content : '' } // 🔑 수정 데이터 유기적 안전 릴레이 바인딩
+                    data={ editingId ? content : '' } 
                     onChange={ ( event, editor ) => {
                       const data = editor.getData();
                       setContent( data );

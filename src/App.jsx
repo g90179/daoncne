@@ -8,7 +8,11 @@ import QuoteBoard from './pages/QuoteBoard';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ForgotPassword from './pages/admin/ForgotPassword'; 
 import ResetPassword from './pages/admin/ResetPassword';
-import PolicyView from './pages/PolicyView'; //정책 공시 뷰어 추가
+import { 
+  PolicyView, 
+  PolicyHistoryList, 
+  PolicyHistoryDetail 
+} from './pages/policy'; //정책 공시 뷰어 추가
 import axiosOriginal from 'axios';
 import { API_URL } from './config';
 import 'ckeditor5/ckeditor5.css';
@@ -163,6 +167,8 @@ function App() {
 
           {/* 🔑 [엔드포인트 개방] 푸터 링크가 도달할 정식 공시 규정 라우트 매핑 */}
           <Route path="/policy" element={<PolicyView />} />
+          <Route path="/policy/history" element={<PolicyHistoryList />} />
+          <Route path="/policy/history/:id" element={<PolicyHistoryDetail />} />
           
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
