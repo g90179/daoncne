@@ -36,14 +36,21 @@ const AdminUserAdmin = ({ loggedInEmail }) => {
     return config;
   });
 
+  // 🔑 [완전 격리 해결] 대시보드 프롭스가 누락되더라도 로컬 스토리지에서 직접 계정을 꺼내오는 원천 필터 구축
+  const currentRequestingEmail = loggedInEmail || localStorage.getItem('loggedInEmail') || '';
+
   const fetchUsers = async () => {
     try { 
-      const res = await axiosInstance.get(`/users?requestingEmail=${loggedInEmail || ''}`); 
+      // 🔑 유동적으로 확보한 이메일 스냅샷을 백엔드 쿼리에 안전하게 바인딩합니다.
+      const res = await axiosInstance.get(`/users?requestingEmail=${currentRequestingEmail}`); 
       setUsers(res.data); 
     } catch (e) {}
   };
 
-  useEffect(() => { fetchUsers(); }, [loggedInEmail]);
+  // 🔑 동기화 타겟을 currentRequestingEmail 변수로 변경하여 즉시 추적 리스닝 가동
+  useEffect(() => { 
+    fetchUsers(); 
+  }, [currentRequestingEmail]);
 
   const handleCreateUser = async () => {
     if (!newEmail || !newPassword) { alert('이메일과 비밀번호를 입력해 주세요.'); return; }
@@ -129,7 +136,7 @@ const AdminUserAdmin = ({ loggedInEmail }) => {
                         {u.email !== 'hello.g901@kakao.com' ? (
                           <button onClick={async () => { if(confirm('삭제하시겠습니까?')) { await axiosInstance.delete(`/users/${u.id}`); fetchUsers(); } }} className="cursor-pointer text-[11px] font-bold px-3 py-1.5 rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-100 transition-all active:scale-95 whitespace-nowrap">삭제</button>
                         ) : (
-                          /* 🔑 [UI/UX 디자인 변형 완료] 텍스트 대신 정교하게 설계된 Soft-UI 컨셉의 방패 수호 배지를 렌더링합니다. */
+                          /* 🛡️ 문구 대신 정교하게 설계된 퍼플 방패 배지 아이콘 장착 완료 */
                           <div 
                             className="px-3 py-1.5 rounded-xl bg-purple-50 text-purple-400 border border-purple-100/70 flex items-center justify-center shadow-sm select-none transition-all duration-300 hover:bg-purple-100/50" 
                             title="시스템 보호 계정 (삭제 불가)"
@@ -153,7 +160,7 @@ const AdminUserAdmin = ({ loggedInEmail }) => {
           </div>
         </div>
 
-        {/* 👉 우측 배치: 신규 계정 빌더 및 정보 변경 폼 에디터 */}
+        {/* 👉 우측 배치: 정보 변경 폼 에디터 */}
         <div className="bg-white/90 backdrop-blur-md p-6 md:p-8 rounded-[2.5rem] shadow-[0_25px_60px_rgba(0,0,0,0.02)] border border-white/70 h-[760px] overflow-y-auto custom-scrollbar transition-all">
           {editingUser ? (
             <div className="space-y-5 text-left animate-fadeIn">

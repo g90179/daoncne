@@ -122,8 +122,8 @@ function App() {
       setIsLoggedIn(true);
       setShowLoginModal(false);
       
-      // 🔑 [주소 전환 완료] 로그인 성공 시 새로운 은닉 주소인 amddashboard 로 진입시킵니다.
-      window.location.href = '/#/amddashboard'; 
+      // 🔑 [주소 전환 완료] 로그인 성공 시 새로운 은닉 주소인 admDashboard 로 진입시킵니다.
+      window.location.href = '/#/admDashboard'; 
     } catch (e) { alert('로그인 정보가 틀렸습니다.'); }
   };
   
@@ -166,7 +166,7 @@ function App() {
 
         {/* 🛠️ 🔑 [주소 전환 완료] 관리자 대시보드 엔드포인트를 /amddashboard 로 변경 라우팅합니다. */}
         <Route 
-          path="/amddashboard" 
+          path="/admDashboard" 
           element={
             <AdminDashboard 
               isLoggedIn={isLoggedIn}

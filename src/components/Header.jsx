@@ -90,11 +90,11 @@ const Header = ({ companyInfo = {}, isLoggedIn, setShowLoginModal }) => {
             </Link>
           </div>
 
-          {/* 🔑 [수정] 대시보드 버튼 클릭 시 setAdminView 없이 즉시 /admin 경로로 브라우저 라우팅을 수행합니다. */}
+          {/* 🔑 [수정] 대시보드 버튼 클릭 시 setAdminView 없이 즉시 /admdashboard 경로로 브라우저 라우팅을 수행합니다. */}
           <button 
             onClick={() => {
               if (isLoggedIn) {
-                navigate('/admin');
+                navigate('/admDashboard');
               } else {
                 setShowLoginModal(true);
               }
