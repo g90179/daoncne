@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import axios from 'axios';
-import { API_URL } from '../config';
+import { API_URL } from '../../config';
 
 const PolicyHistoryList = () => {
   const location = useLocation();

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom'; // 🔑 Link 임포트 체크
 import axios from 'axios'; 
-import { API_URL } from '../config'; 
+import { API_URL } from '../../config';
 
 const PolicyView = () => {
   const location = useLocation();
