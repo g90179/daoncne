@@ -1,6 +1,7 @@
-// daon-frontend\src\pages\QuoteBoard.jsx
+// daon-frontend/src/pages/QuoteBoard.jsx
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import axios from 'ajax';
+import axiosOriginal from 'axios';
 import { API_URL } from '../config';
 import Pagination from '../components/Pagination'; // 🔑 공통 페이징 모듈 임포트
 
@@ -40,11 +41,11 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
     privacyAgreement: false // 개인정보 수집 동의 상태
   });
 
-  // 🔄 [수정] 백엔드 하이브리드 포맷(success, data 구조)에 맞게 리스트 바인딩 개선
+  // 🔄 백엔드 하이브리드 포맷(success, data 구조)에 맞게 리스트 바인딩 개선
   const fetchQuotes = async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get(`${API_URL}/quotes`);
+      const response = await axiosOriginal.get(`${API_URL}/quotes`);
       
       // 백엔드가 { success: true, data: [...] } 구조로 안전하게 감싸 보낸 데이터 매핑
       if (response.data && response.data.success === true) {
@@ -71,7 +72,7 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
     const fetchInitToken = async () => {
       if (activeTab === 'write') {
         try {
-          const res = await axios.get(`${API_URL}/quotes/init`);
+          const res = await axiosOriginal.get(`${API_URL}/quotes/init`);
           setServerTid(res.data.tid);
           setIsCaptchaRequired(false);
           setCaptchaInput('');
@@ -86,7 +87,7 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
   // 3. 캡차 문제 받아오기 함수
   const fetchCaptcha = async () => {
     try {
-      const res = await axios.get(`${API_URL}/quotes/quiz`);
+      const res = await axiosOriginal.get(`${API_URL}/quotes/quiz`);
       setCaptchaInfo({ question: res.data.question, cid: res.data.cid });
       setIsCaptchaRequired(true);
     } catch (err) {
@@ -110,7 +111,7 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
   const handleRowClick = async (post) => {
     if (isLoggedIn) {
       try {
-        const res = await axios.get(`${API_URL}/quotes/${post.id}`);
+        const res = await axiosOriginal.get(`${API_URL}/quotes/${post.id}`);
         setSelectedQuote(res.data);
         setAdminReplyInput(res.data.reply || '');
       } catch (err) { alert('데이터를 불러오지 못했습니다.'); }
@@ -119,7 +120,7 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
       setShowPasswordModal(true);
     } else {
       try {
-        const res = await axios.get(`${API_URL}/quotes/${post.id}`);
+        const res = await axiosOriginal.get(`${API_URL}/quotes/${post.id}`);
         setSelectedQuote(res.data);
       } catch (err) { alert('데이터를 불러오지 못했습니다.'); }
     }
@@ -127,9 +128,9 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
 
   // 🔑 비밀번호 검증 요청
   const handlePasswordVerify = async (e) => {
-    e.preventDefault();
+    preventDefault();
     try {
-      const res = await axios.post(`${API_URL}/quotes/${pendingQuoteId}/verify`, { password: passwordInput });
+      const res = await axiosOriginal.post(`${API_URL}/quotes/${pendingQuoteId}/verify`, { password: passwordInput });
       setSelectedQuote(res.data);
       setShowPasswordModal(false);
     } catch (err) {
@@ -137,9 +138,28 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
     }
   };
 
-  // 4. [수정] All-200-OK 성공 본문 수신 및 가비아 우회 분기문 전면 개편
+  // 👑 [신규 추가] 관리자 전용 견적글 무조건 삭제 핸들러
+  const handleDeleteQuote = async (id, e) => {
+    e.stopPropagation(); // 🛡️ 부모 요소인 tr 행 클릭 이벤트 버블링 차단 (디테일 뷰 진입 방지)
+    if (!window.confirm('정말 이 견적 문의를 데이터베이스에서 완전 삭제하시겠습니까?')) return;
+    
+    try {
+      // 대시보드 권한 헤더 설정을 위해 기존 로컬스토리지 토큰을 탑재하여 요청 발송
+      const token = localStorage.getItem('token');
+      await axiosOriginal.delete(`${API_URL}/quotes/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert('견적글이 정상적으로 삭제되었습니다.');
+      fetchQuotes(); // 목록 새로고침
+    } catch (err) {
+      console.error('삭제 실패:', err);
+      alert('삭제 권한이 없거나 서버 처리에 실패했습니다.');
+    }
+  };
+
+  // 4. All-200-OK 성공 본문 수신 및 가비아 우회 분기문 전면 개편
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    preventDefault();
 
     if (!formData.privacyAgreement) {
       alert('개인정보 수집 및 이용에 동의하셔야 견적 문의 접수가 가능합니다.');
@@ -154,7 +174,7 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
         ans: captchaInput || undefined
       };
 
-      const res = await axios.post(`${API_URL}/quotes/`, payload);
+      const res = await axiosOriginal.post(`${API_URL}/quotes/`, payload);
       
       // 🛡️ 가비아 웹서버 우회 대응: HTTP Status 200 내부의 success 플래그 가로채기
       if (res.data && res.data.success === false) {
@@ -180,9 +200,9 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
 
   // ✍️ 작성자 글 수정 제출
   const handleUpdateSubmit = async (e) => {
-    e.preventDefault();
+    preventDefault();
     try {
-      const res = await axios.put(`${API_URL}/quotes/${selectedQuote.id}`, selectedQuote);
+      const res = await axiosOriginal.put(`${API_URL}/quotes/${selectedQuote.id}`, selectedQuote);
       alert('문의 내용이 수정되었습니다.');
       setSelectedQuote(res.data);
       setIsEditMode(false);
@@ -193,9 +213,9 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
 
   // 👑 관리자 답변 등록 제출
   const handleAdminReplySubmit = async (e) => {
-    e.preventDefault();
+    preventDefault();
     try {
-      const res = await axios.put(`${API_URL}/quotes/${selectedQuote.id}/reply`, { reply: adminReplyInput });
+      const res = await axiosOriginal.put(`${API_URL}/quotes/${selectedQuote.id}/reply`, { reply: adminReplyInput });
       alert('답변이 등록되었습니다.');
       setSelectedQuote(res.data);
     } catch (err) {
@@ -240,15 +260,17 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
                     <th className="py-4 px-4 w-28 text-center">작성자</th>
                     <th className="py-4 px-4 w-32 text-center">등록일</th>
                     <th className="py-4 px-4 w-28 text-center">상태</th>
+                    {/* 🔑 관리자 로그인 시에만 삭제를 위한 '관리' 탭 헤더 오픈 */}
+                    {isLoggedIn && <th className="py-4 px-4 w-20 text-center">관리</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100 text-neutral-700">
                   {isLoading ? (
-                    <tr><td colSpan="5" className="py-12 text-center text-neutral-400 text-xs">로딩 중...</td></tr>
+                    <tr><td colSpan={isLoggedIn ? 6 : 5} className="py-12 text-center text-neutral-400 text-xs">로딩 중...</td></tr>
                   ) : boardList.length === 0 ? (
-                    <tr><td colSpan="5" className="py-12 text-center text-neutral-400 text-xs">등록된 내역이 없습니다.</td></tr>
+                    <tr><td colSpan={isLoggedIn ? 6 : 5} className="py-12 text-center text-neutral-400 text-xs">등록된 내역이 없습니다.</td></tr>
                   ) : (
-                    /* 🔑 전체 리스트였던 boardList 대신 슬라이싱된 currentQuotes 배열을 맵핑 */
+                    /* 전체 리스트였던 boardList 대신 슬라이싱된 currentQuotes 배열을 맵핑 */
                     currentQuotes.map((post) => (
                       <tr key={post.id} className="hover:bg-neutral-50/50 cursor-pointer transition-colors" onClick={() => handleRowClick(post)}>
                         <td className="py-4 px-4 text-center text-neutral-400 text-xs">{post.id}</td>
@@ -267,6 +289,17 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
                             {post.status}
                           </span>
                         </td>
+                        {/* 🔑 관리자 로그인 시에만 삭제 버튼 셀 생성 */}
+                        {isLoggedIn && (
+                          <td className="py-4 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={(e) => handleDeleteQuote(post.id, e)}
+                              className="text-[11px] font-bold text-rose-600 hover:text-rose-800 border border-rose-200 hover:border-rose-300 bg-rose-50/50 px-2.5 py-1 rounded-md transition-all active:scale-95 cursor-pointer"
+                            >
+                              삭제
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     ))
                   )}
@@ -362,7 +395,7 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div><label className="block text-xs font-semibold text-neutral-400 mb-2">회사명 / 기관명</label><input type="text" name="company" value={formData.company} onChange={handleInputChange} placeholder="주식회사 다온씨엔이" className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3" /></div>
               <div><label className="block text-xs font-semibold text-neutral-400 mb-2">작성자 성함 *</label><input type="text" name="name" required value={formData.name} onChange={handleInputChange} placeholder="홍길동" className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3" /></div>
-              <div><label className="block text-xs font-semibold text-neutral-400 mb-2">연락처 *</label><input type="tel" name="phone" required value={formData.phone} onChange={handleInputChange} placeholder="010-0000-0000" className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3" /></div>
+              <div><label className="block text-xs font-semibold text-neutral-400 mb-2">連絡先 *</label><input type="tel" name="phone" required value={formData.phone} onChange={handleInputChange} placeholder="010-0000-0000" className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3" /></div>
               <div><label className="block text-xs font-semibold text-neutral-400 mb-2">이메일 주소 *</label><input type="email" name="email" required value={formData.email} onChange={handleInputChange} placeholder="example@daoncne.com" className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3" /></div>
             </div>
             <div><label className="block text-xs font-semibold text-neutral-400 mb-2">문의 제목 *</label><input type="text" name="title" required value={formData.title} onChange={handleInputChange} placeholder="문의 사항 핵심 제목" className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3" /></div>
@@ -438,7 +471,7 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
             <div><h4 className="font-bold text-neutral-900 text-base">비밀글 인증 패널</h4><p className="text-xs text-neutral-400 mt-0.5">글 작성 시 입력했던 본인확인용 비밀번호를 입력하세요.</p></div>
             <form onSubmit={handlePasswordVerify} className="space-y-3">
               <input type="password" required autoFocus className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-neutral-900" placeholder="비밀번호 4자리 입력" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} />
-              <div className="flex gap-2"><button type="button" onClick={() => { setShowPasswordModal(false); setPasswordInput(''); }} className="flex-1 text-xs font-medium text-neutral-500 border border-neutral-100 py-3 rounded-xl hover:bg-neutral-50">닫기</button><button type="submit" className="flex-1 text-xs font-bold text-white bg-neutral-950 py-3 rounded-xl hover:bg-hover:bg-neutral-800">본인 확인 완료</button></div>
+              <div className="flex gap-2"><button type="button" onClick={() => { setShowPasswordModal(false); setPasswordInput(''); }} className="flex-1 text-xs font-medium text-neutral-500 border border-neutral-100 py-3 rounded-xl hover:bg-neutral-50">닫기</button><button type="submit" className="flex-1 text-xs font-bold text-white bg-neutral-950 py-3 rounded-xl hover:bg-neutral-800">본인 확인 완료</button></div>
             </form>
           </div>
         </div>
