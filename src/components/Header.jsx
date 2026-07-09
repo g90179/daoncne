@@ -1,11 +1,15 @@
 // daon-frontend/src/components/Header.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 const Header = ({ companyInfo = {}, isLoggedIn, setShowLoginModal }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  
+  // 🚨 [관리자 비밀 통로용] 클릭 횟수와 타이머를 추적하는 변수 (화면 새로고침 방지용 useRef 사용)
+  const clickCount = useRef(0);
+  const clickTimer = useRef(null);
   
   const isMainHome = location.pathname === '/';
 
@@ -32,6 +36,30 @@ const Header = ({ companyInfo = {}, isLoggedIn, setShowLoginModal }) => {
     }
   };
 
+  // 🚀 [신규] 로고 5연속 클릭 감지 함수
+  const handleLogoClick = () => {
+    // 1. 기본 동작: 1번 누르면 무조건 홈으로 이동 (일반 유저용)
+    navigate('/');
+    handleScrollTop();
+
+    // 2. 비로그인 상태일 때만 5번 클릭 카운트 시작 (관리자용)
+    if (!isLoggedIn) {
+      clickCount.current += 1;
+
+      // 5번을 연속으로 채웠다면?
+      if (clickCount.current >= 5) {
+        setShowLoginModal(true); // 로그인 모달 오픈!
+        clickCount.current = 0; // 카운트 초기화
+      }
+
+      // 만약 클릭하고 2초(2000ms) 동안 다음 클릭이 없으면 횟수 리셋 (우연히 5번 채워지는 것 방지)
+      clearTimeout(clickTimer.current);
+      clickTimer.current = setTimeout(() => {
+        clickCount.current = 0;
+      }, 2000);
+    }
+  };
+
   const isWhiteTextTheme = isMainHome && !isScrolled;
 
   return (
@@ -44,15 +72,12 @@ const Header = ({ companyInfo = {}, isLoggedIn, setShowLoginModal }) => {
     }`}>
       <div className="max-w-[1600px] mx-auto px-6 md:px-12 h-20 flex justify-between items-center transition-all">
         
-        {/* 로고 영역 */}
+        {/* 🚀 로고 영역: onClick에 5연타 감지 함수(handleLogoClick)를 연결했습니다. */}
         <div 
-          className={`text-xl font-normal tracking-tight cursor-pointer transition-colors duration-300 ${
+          className={`text-xl font-normal tracking-tight cursor-pointer transition-colors duration-300 select-none ${
             isWhiteTextTheme ? 'text-white' : 'text-neutral-900'
           }`} 
-          onClick={() => {
-            navigate('/');
-            handleScrollTop();
-          }}
+          onClick={handleLogoClick}
         >
           daon<span className={`font-bold ${isWhiteTextTheme ? 'text-white' : 'text-neutral-900'}`}>cne</span>
         </div>
@@ -64,7 +89,7 @@ const Header = ({ companyInfo = {}, isLoggedIn, setShowLoginModal }) => {
               to="/" 
               onClick={handleScrollTop}
               className={`transition duration-200 ${
-                isWhiteTextTheme ? 'text-white/90 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'
+                isWhiteTextTheme ? 'text-white/60 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'
               }`}
             >
               홈
@@ -74,7 +99,7 @@ const Header = ({ companyInfo = {}, isLoggedIn, setShowLoginModal }) => {
               to="/company" 
               onClick={handleScrollTop}
               className={`transition duration-200 ${
-                isWhiteTextTheme ? 'text-white/90 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'
+                isWhiteTextTheme ? 'text-white/60 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'
               }`}
             >
               회사소개
@@ -84,7 +109,7 @@ const Header = ({ companyInfo = {}, isLoggedIn, setShowLoginModal }) => {
               to="//#archive" 
               onClick={handlePortfolioClick}
               className={`transition duration-200 ${
-                isWhiteTextTheme ? 'text-white/90 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'
+                isWhiteTextTheme ? 'text-white/60 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'
               }`}
             >
               포트폴리오
@@ -94,14 +119,14 @@ const Header = ({ companyInfo = {}, isLoggedIn, setShowLoginModal }) => {
               to="/quotes" 
               onClick={handleScrollTop}
               className={`transition duration-200 ${
-                isWhiteTextTheme ? 'text-white/90 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'
+                isWhiteTextTheme ? 'text-white/60 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'
               }`}
             >
               견적문의
             </Link>
           </div>
 
-          {/* 🔑 [수정] 비로그인 시 Sign In 버튼을 완전히 숨기고, 로그인 상태(isLoggedIn)일 때만 Dashboard 버튼을 렌더링합니다. */}
+          {/* 로그인 상태일 때만 대시보드 진입 버튼 노출 */}
           {isLoggedIn && (
             <button 
               onClick={() => navigate('/admDashboard')} 
