@@ -6,6 +6,9 @@ import MainSlideAdmin from './MainSlideAdmin';
 import AdminUserAdmin from './AdminUserAdmin';
 import AdminCompanyAdmin from './AdminCompanyAdmin';
 import AdminPolicyAdmin from './AdminPolicyAdmin'; // 정책 관리 컴포넌트
+import MobileUploadModal from '../../components/MobileUploadModal';
+
+import axiosOriginal from 'axios';
 
 const DEBUG_ALLOWED_EMAIL = 'hello.g901@kakao.com';
 
@@ -22,6 +25,7 @@ const AdminDashboard = ({
 }) => {
   const navigate = useNavigate();
   const [adminView, setAdminView] = useState('posts'); 
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const isSuperAdmin = loggedInEmail === DEBUG_ALLOWED_EMAIL;
 
   useEffect(() => {
@@ -37,6 +41,47 @@ const AdminDashboard = ({
     users: '계정 관리',
     company: '회사 정보 관리',
     policies: '정책 관리'
+  };
+
+  // 🚀 모바일 전용 초고속 사진/글 업로드 API 호출 함수
+  const handleMobileUpload = async ({ file, content }) => {
+    try {
+      const formData = new FormData();
+      
+      // 1. 파일 세팅 (💡 백엔드 컨트롤러에서 사진을 받는 필드명이 'image'인지 'file'인지 확인 후 맞춰주세요)
+      if (file) {
+        formData.append('image', file, file.name || 'mobile-upload.jpg');
+      }
+      
+      // 2. 글 내용 세팅
+      formData.append('content', content);
+      
+      // 3. 제목 자동 생성 (내용의 첫 15글자) 및 카테고리 지정
+      const title = content.length > 15 ? content.substring(0, 15) + '...' : content || '모바일 업로드';
+      formData.append('title', title);
+      
+      // 현재 보고 있는 탭(예: portfolio)을 카테고리로 같이 보내줍니다.
+      formData.append('category', activeTab || 'portfolio');
+
+      const token = localStorage.getItem('access_token');
+      
+      // 💡 백엔드의 실제 포트폴리오(posts) 생성 엔드포인트 주소로 변경해 주세요!
+      await axiosOriginal.post(`${import.meta.env.VITE_API_URL}/posts`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      alert('포트폴리오가 성공적으로 업로드되었습니다! 🎉');
+      
+      // 성공 후 즉시 게시물 목록 새로고침
+      if (fetchPosts) fetchPosts(); 
+
+    } catch (error) {
+      console.error('포트폴리오 모바일 업로드 실패:', error);
+      alert('업로드 중 문제가 발생했습니다. 관리자 세션이 만료되었는지 확인해 주세요.');
+    }
   };
 
   return (
@@ -102,7 +147,6 @@ const AdminDashboard = ({
               <span className="text-slate-300">/</span>
               <span className="text-slate-900 font-black">{viewTitles[adminView]}</span>
             </div>
-            {/* 🔑 이 자리에 콘텐츠 관리 등 대형 타이틀 전면 주입 */}
             <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight mt-1.5">
               {viewTitles[adminView]}
             </h1>
@@ -134,6 +178,24 @@ const AdminDashboard = ({
           {adminView === 'policies' && <AdminPolicyAdmin />}
         </div>
       </main>
+
+      {/* 🚀 콘텐츠 관리 게시판에만 등장하는 플로팅 메뉴 (FAB) & 업로드 모달 */}
+      {adminView === 'posts' && (
+        <>
+          <button
+            onClick={() => setIsUploadModalOpen(true)}
+            className="fixed bottom-8 right-8 md:bottom-12 md:right-12 w-14 h-14 md:w-16 md:h-16 bg-neutral-900 text-white rounded-full shadow-[0_10px_25px_rgba(0,0,0,0.3)] flex items-center justify-center text-3xl font-light hover:scale-105 active:scale-95 transition-transform z-[150]"
+          >
+            +
+          </button>
+
+          <MobileUploadModal 
+            isOpen={isUploadModalOpen} 
+            onClose={() => setIsUploadModalOpen(false)} 
+            onUpload={handleMobileUpload}
+          />
+        </>
+      )}
 
     </div>
   );
