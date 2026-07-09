@@ -108,7 +108,7 @@ const MobileUploadModal = ({ isOpen, onClose, onUpload }) => {
           <input 
             type="file" 
             ref={fileInputRef}
-            accept="image/*,video/*" 
+            accept="image/*" 
             capture="environment"
             className="hidden" 
             onChange={handleImageChange}
