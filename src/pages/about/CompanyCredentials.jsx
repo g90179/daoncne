@@ -90,10 +90,10 @@ const CompanyCredentials = () => {
         
         <div className="max-w-4xl mx-auto space-y-3 relative z-10">
           <div className="text-[10px] tracking-widest font-black text-blue-500 uppercase font-mono bg-blue-50 px-3 py-1 rounded-full inline-block">
-            Daon C&E Credentials
+            Daon C&E Introduction
           </div>
           <h1 className="text-3xl md:text-4xl font-black text-[oklch(0.38_0.07_259.56)] tracking-tight">
-            공사지명원 명세 자격
+            회사소개
           </h1>
           <p className="text-xs md:text-sm text-neutral-400 font-medium tracking-wide">
             축적된 특수중량물 인프라 핸들링 기술력과 기계설비 설치 공사의 단호한 전문성을 증명합니다. 
