@@ -1,0 +1,11 @@
+Plaintext
+
+
+User-agent: *
+Allow: /
+Disallow: /admDashboard
+Disallow: /forgot-password
+Disallow: /reset-password
+
+# 💡 추후 실제 도메인이 연결되면 아래 주소를 실도메인 주소로 변경해 주세요!
+Sitemap: https://daonce.co.kr/sitemap.xml
