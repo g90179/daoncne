@@ -1,7 +1,6 @@
-// daon-frontend/src/pages/QuoteBoard.jsx
+// daon-frontend\src\pages\QuoteBoard.jsx
 import React, { useState, useEffect } from 'react';
-import axios from 'ajax';
-import axiosOriginal from 'axios';
+import axios from 'axios';
 import { API_URL } from '../config';
 import Pagination from '../components/Pagination'; // 🔑 공통 페이징 모듈 임포트
 
@@ -45,7 +44,7 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
   const fetchQuotes = async () => {
     setIsLoading(true);
     try {
-      const response = await axiosOriginal.get(`${API_URL}/quotes`);
+      const response = await axios.get(`${API_URL}/quotes`);
       
       // 백엔드가 { success: true, data: [...] } 구조로 안전하게 감싸 보낸 데이터 매핑
       if (response.data && response.data.success === true) {
@@ -72,7 +71,7 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
     const fetchInitToken = async () => {
       if (activeTab === 'write') {
         try {
-          const res = await axiosOriginal.get(`${API_URL}/quotes/init`);
+          const res = await axios.get(`${API_URL}/quotes/init`);
           setServerTid(res.data.tid);
           setIsCaptchaRequired(false);
           setCaptchaInput('');
@@ -87,7 +86,7 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
   // 3. 캡차 문제 받아오기 함수
   const fetchCaptcha = async () => {
     try {
-      const res = await axiosOriginal.get(`${API_URL}/quotes/quiz`);
+      const res = await axios.get(`${API_URL}/quotes/quiz`);
       setCaptchaInfo({ question: res.data.question, cid: res.data.cid });
       setIsCaptchaRequired(true);
     } catch (err) {
@@ -111,7 +110,7 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
   const handleRowClick = async (post) => {
     if (isLoggedIn) {
       try {
-        const res = await axiosOriginal.get(`${API_URL}/quotes/${post.id}`);
+        const res = await axios.get(`${API_URL}/quotes/${post.id}`);
         setSelectedQuote(res.data);
         setAdminReplyInput(res.data.reply || '');
       } catch (err) { alert('데이터를 불러오지 못했습니다.'); }
@@ -120,7 +119,7 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
       setShowPasswordModal(true);
     } else {
       try {
-        const res = await axiosOriginal.get(`${API_URL}/quotes/${post.id}`);
+        const res = await axios.get(`${API_URL}/quotes/${post.id}`);
         setSelectedQuote(res.data);
       } catch (err) { alert('데이터를 불러오지 못했습니다.'); }
     }
@@ -130,7 +129,7 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
   const handlePasswordVerify = async (e) => {
     preventDefault();
     try {
-      const res = await axiosOriginal.post(`${API_URL}/quotes/${pendingQuoteId}/verify`, { password: passwordInput });
+      const res = await axios.post(`${API_URL}/quotes/${pendingQuoteId}/verify`, { password: passwordInput });
       setSelectedQuote(res.data);
       setShowPasswordModal(false);
     } catch (err) {
@@ -146,7 +145,7 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
     try {
       // 대시보드 권한 헤더 설정을 위해 기존 로컬스토리지 토큰을 탑재하여 요청 발송
       const token = localStorage.getItem('token');
-      await axiosOriginal.delete(`${API_URL}/quotes/${id}`, {
+      await axios.delete(`${API_URL}/quotes/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       alert('견적글이 정상적으로 삭제되었습니다.');
@@ -174,7 +173,7 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
         ans: captchaInput || undefined
       };
 
-      const res = await axiosOriginal.post(`${API_URL}/quotes/`, payload);
+      const res = await axios.post(`${API_URL}/quotes/`, payload);
       
       // 🛡️ 가비아 웹서버 우회 대응: HTTP Status 200 내부의 success 플래그 가로채기
       if (res.data && res.data.success === false) {
@@ -202,7 +201,7 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
   const handleUpdateSubmit = async (e) => {
     preventDefault();
     try {
-      const res = await axiosOriginal.put(`${API_URL}/quotes/${selectedQuote.id}`, selectedQuote);
+      const res = await axios.put(`${API_URL}/quotes/${selectedQuote.id}`, selectedQuote);
       alert('문의 내용이 수정되었습니다.');
       setSelectedQuote(res.data);
       setIsEditMode(false);
@@ -215,7 +214,7 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
   const handleAdminReplySubmit = async (e) => {
     preventDefault();
     try {
-      const res = await axiosOriginal.put(`${API_URL}/quotes/${selectedQuote.id}/reply`, { reply: adminReplyInput });
+      const res = await axios.put(`${API_URL}/quotes/${selectedQuote.id}/reply`, { reply: adminReplyInput });
       alert('답변이 등록되었습니다.');
       setSelectedQuote(res.data);
     } catch (err) {
