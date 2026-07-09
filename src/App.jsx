@@ -13,6 +13,9 @@ import {
   PolicyHistoryList, 
   PolicyHistoryDetail 
 } from './pages/policy'; //정책 공시 뷰어 추가
+import { 
+  Company
+} from './pages/about';
 import axiosOriginal from 'axios';
 import { API_URL } from './config';
 import 'ckeditor5/ckeditor5.css';
@@ -169,6 +172,8 @@ function App() {
           <Route path="/policy" element={<PolicyView />} />
           <Route path="/policy/history" element={<PolicyHistoryList />} />
           <Route path="/policy/history/:id" element={<PolicyHistoryDetail />} />
+
+          <Route path="/company" element={<Company />} />
           
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />

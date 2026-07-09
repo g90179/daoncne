@@ -53,6 +53,11 @@ const AdminDashboard = ({
           </div>
 
           <nav className="space-y-2">
+            <button onClick={() => window.location.href = '/'} 
+            className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold text-xs transition-all duration-300 cursor-pointer text-left text-slate-400 hover:text-slate-700 hover:bg-slate-100/50">
+              <span className="text-base">🏠</span>
+              <span className="hidden md:inline-block font-semibold tracking-wide">홈페이지</span>
+            </button>
             {[
               { id: 'posts', label: '콘텐츠 관리', icon: '📝' },
               { id: 'slides', label: '메인 슬라이드', icon: '🎬' },
@@ -80,9 +85,6 @@ const AdminDashboard = ({
         </div>
 
         <div className="space-y-2 pt-4 border-t border-slate-100">
-          <button onClick={() => window.location.href = '/'} className="w-full flex items-center gap-4 px-4 py-3 text-xs font-bold text-slate-400 hover:text-slate-700 transition cursor-pointer text-left">
-            <span>🏠</span><span className="hidden md:inline-block">홈페이지</span>
-          </button>
           <button onClick={handleLogout} className="w-full flex items-center gap-4 px-4 py-3 text-xs font-bold text-red-400 hover:bg-red-50 rounded-2xl transition cursor-pointer text-left">
             <span>🔓</span><span className="hidden md:inline-block">로그아웃</span>
           </button>

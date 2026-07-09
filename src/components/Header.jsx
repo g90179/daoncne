@@ -68,6 +68,16 @@ const Header = ({ companyInfo = {}, isLoggedIn, setShowLoginModal }) => {
             >
               홈
             </Link>
+
+            <Link 
+              to="/company" 
+              onClick={handleScrollTop}
+              className={`transition duration-200 ${
+                isWhiteTextTheme ? 'text-white/60 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'
+              }`}
+            >
+              회사소개
+            </Link>
             
             <Link 
               to="//#archive" 
