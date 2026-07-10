@@ -39,7 +39,7 @@ const AdminPostAdmin = ({ posts, fetchPosts, activeTab, setActiveTab }) => {
       
       // 1. 파일 세팅 (백엔드 컨트롤러에 맞춰 'image' 또는 'file'로 이름 확인 필요)
       if (file) {
-        formData.append('image', file, file.name || 'mobile-upload.jpg');
+        formData.append('files', file, file.name || 'mobile-upload.jpg');
       }
       
       // 2. 내용 및 제목 세팅
@@ -50,14 +50,10 @@ const AdminPostAdmin = ({ posts, fetchPosts, activeTab, setActiveTab }) => {
       // 3. 현재 보고 있는 탭(현장사진 등)을 카테고리로 지정
       formData.append('category', activeTab || '현장사진');
 
-      // 로그인 시 저장한 키값 확인 (token 또는 access_token)
-      const token = localStorage.getItem('token'); 
-
       // 인터셉터가 토큰을 알아서 넣어주므로, 여기서는 파일 타입 헤더만 추가하면 됩니다.
       await axiosInstance.post('/posts', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${token}` // 💡 강제 주입
         }
       });
 
