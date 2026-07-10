@@ -1,8 +1,7 @@
-// daon-frontend/src/pages/PolicyView.jsx
+// daon-frontend/src/pages/policy/PolicyView.jsx
 import React, { useState, useEffect } from 'react';
-import { useLocation, Link } from 'react-router-dom'; // 🔑 Link 임포트 체크
-import axios from 'axios'; 
-import { API_URL } from '../../config';
+import { useLocation, Link } from 'react-router-dom';
+import api from '../../api/axios'; // 🔑 경로를 ../../ 로 수정하고 통합 api 인스턴스 사용
 
 const PolicyView = () => {
   const location = useLocation();
@@ -20,7 +19,8 @@ const PolicyView = () => {
     const fetchExposedPolicy = async () => {
       setLoading(true);
       try {
-        const res = await axios.get(`${API_URL}/policies/exposed/${activeTab}`);
+        // 🔑 통합된 api 인스턴스 사용 (baseURL이 이미 설정되어 있어 API_URL 불필요)
+        const res = await api.get(`/policies/exposed/${activeTab}`);
         setPolicy(res.data); 
       } catch (e) {
         setPolicy(null);
@@ -80,7 +80,7 @@ const PolicyView = () => {
       {/* 📄 본문 약관 명세 보드 레이아웃 */}
       <main className="max-w-7xl mx-auto py-12 md:py-20 px-4 md:px-10 grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
         
-        {/* 👈 좌측 Sticky 고정 신뢰 지표 패널 (cols-4) */}
+        {/* 👈 좌측 Sticky 고정 신뢰 지표 패널 */}
         <div className="lg:col-span-4 lg:sticky lg:top-28 space-y-6">
           <div className="bg-white p-6 md:p-8 rounded-[2rem] border border-neutral-200/50 shadow-[0_20px_50px_rgba(0,0,0,0.01)] text-left space-y-5">
             <div className="flex items-center gap-3 text-blue-500">
@@ -117,11 +117,10 @@ const PolicyView = () => {
               </div>
             </div>
 
-            {/* 🔑 [신규 삽입] 아카이브 리스트로 진입하는 프리미엄 네비게이션 버튼 플레이트 */}
             <div className="pt-2 border-t border-neutral-100">
               <Link
                 to="/policy/history"
-                state={{ defaultFilter: activeTab }} // 현재 활성화된 탭을 아카이브 분류 필터 기본값으로 안전 릴레이
+                state={{ defaultFilter: activeTab }} 
                 onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                 className="w-full flex items-center justify-center gap-2 text-center text-[11px] font-bold bg-neutral-50 hover:bg-neutral-100 hover:text-blue-500 text-neutral-500 py-3 rounded-xl border border-neutral-200/50 transition-all duration-200 cursor-pointer"
               >
@@ -134,7 +133,7 @@ const PolicyView = () => {
           </div>
         </div>
 
-        {/* 👉 우측 실질 약관 상세 내역 보드 (cols-8) */}
+        {/* 👉 우측 실질 약관 상세 내역 보드 */}
         <div className="lg:col-span-8 bg-white p-8 md:p-12 rounded-[2.5rem] border border-neutral-200/50 shadow-[0_30px_70px_rgba(0,0,0,0.015)] text-left min-h-[500px] flex flex-col justify-start">
           {loading ? (
             <div className="flex-1 flex flex-col items-center justify-center space-y-3 text-neutral-400 py-32">

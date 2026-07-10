@@ -1,8 +1,7 @@
 // daon-frontend/src/pages/PolicyHistoryList.jsx
 import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import axios from 'axios';
-import { API_URL } from '../../config';
+import api from '../../api/axios'; // 🔑 통합된 API 인스턴스 사용 (상대 경로 수정)
 
 const PolicyHistoryList = () => {
   const location = useLocation();
@@ -14,8 +13,9 @@ const PolicyHistoryList = () => {
     const fetchHistory = async () => {
       setLoading(true);
       try {
+        // 🔑 api 인스턴스 사용 (API_URL 제거)
         const targetQuery = filterType === 'ALL' ? '' : `?type=${filterType}`;
-        const res = await axios.get(`${API_URL}/policies${targetQuery}`);
+        const res = await api.get(`/policies${targetQuery}`);
         setHistoryList(res.data);
       } catch (e) {
         setHistoryList([]);

@@ -1,7 +1,6 @@
 // daon-frontend/src/pages/admin/MainSlideAdmin.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
-import { API_URL } from '../../config';
+import api from '../../api/axios'; // 🔑 통합 API 인스턴스 사용
 import Pagination from '../../components/Pagination';
 
 const MainSlideAdmin = () => {
@@ -23,7 +22,7 @@ const MainSlideAdmin = () => {
 
   const fetchSlides = async () => {
     try {
-      const res = await axios.get(`${API_URL}/main-slides`);
+      const res = await api.get('/main-slides'); // 🔑 API_URL 제거 및 api 사용
       setSlides(res.data);
     } catch (err) { console.error('슬라이드 로드 실패', err); }
   };
@@ -60,7 +59,7 @@ const MainSlideAdmin = () => {
       uploadData.append('video', selectedFile);
 
       try {
-        const uploadRes = await axios.post(`${API_URL}/main-slides/upload`, uploadData, {
+        const uploadRes = await api.post('/main-slides/upload', uploadData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
         finalVideoUrl = uploadRes.data.videoUrl;
@@ -78,10 +77,10 @@ const MainSlideAdmin = () => {
 
     try {
       if (editingId) {
-        await axios.put(`${API_URL}/main-slides/${editingId}`, payload);
+        await api.put(`/main-slides/${editingId}`, payload);
         alert('슬라이드가 수정되었습니다.');
       } else {
-        await axios.post(`${API_URL}/main-slides`, payload);
+        await api.post('/main-slides', payload);
         alert('새 슬라이드가 등록되었습니다.');
         setCurrentPage(1); // 신규 추가 시 첫 페이지로 복귀
       }
@@ -109,7 +108,7 @@ const MainSlideAdmin = () => {
   const handleDelete = async (id) => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
     try {
-      await axios.delete(`${API_URL}/main-slides/${id}`);
+      await api.delete(`/main-slides/${id}`);
       if (currentSlides.length === 1 && currentPage > 1) {
         setCurrentPage(prev => prev - 1);
       }
@@ -155,7 +154,7 @@ const MainSlideAdmin = () => {
               </div>
             ) : (
               <div className="divide-y divide-slate-100">
-                {currentSlides.map((slide, idx) => (
+                {currentSlides.map((slide) => (
                   <div key={slide.id} className="group flex items-center justify-between py-4 px-1 hover:bg-slate-50/60 transition-all duration-200">
                     
                     {/* 정보 결합단 */}

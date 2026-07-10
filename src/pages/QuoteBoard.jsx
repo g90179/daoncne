@@ -1,60 +1,36 @@
-// daon-frontend\src\pages\QuoteBoard.jsx
+// daon-frontend/src/pages/QuoteBoard.jsx
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { API_URL } from '../config';
-import Pagination from '../components/Pagination'; // 🔑 공통 페이징 모듈 임포트
+import api from '../api/axios'; 
+import Pagination from '../components/Pagination';
 
 const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [boardList, setBoardList] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-
-  // 🔑 페이징 처리 전용 상태값 추가 (초기값: 1페이지)
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 10; // 테이블 형태 리스트는 10개 노출이 표준 규격입니다.
+  const ITEMS_PER_PAGE = 10;
 
-  // 🔎 상세 보기 및 제어 상태들
   const [selectedQuote, setSelectedQuote] = useState(null);
-  const [isEditMode, setIsEditMode] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
   const [pendingQuoteId, setPendingQuoteId] = useState(null);
-  const [adminReplyInput, setAdminReplyInput] = useState('');
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editFormData, setEditFormData] = useState({ title: '', content: '' });
 
-  // 1. 컴포넌트 상단 상태 변수 선언단 정돈
-  const [serverTid, setServerTid] = useState(''); // 서버에서 받아올 대기표 ID
+  const [serverTid, setServerTid] = useState('');
   const [captchaInfo, setCaptchaInfo] = useState({ question: '', cid: '' });
   const [captchaInput, setCaptchaInput] = useState('');
   const [isCaptchaRequired, setIsCaptchaRequired] = useState(false);
 
-  // 상단 state 정의 부분
   const [formData, setFormData] = useState({
-    company: '', 
-    name: '', 
-    phone: '', 
-    email: '', 
-    title: '', 
-    content: '', 
-    isSecret: true, 
-    password: '',
-    privacyAgreement: false // 개인정보 수집 동의 상태
+    company: '', name: '', phone: '', email: '', title: '', content: '', isSecret: true, password: '', privacyAgreement: false
   });
 
-  // 🔄 백엔드 하이브리드 포맷(success, data 구조)에 맞게 리스트 바인딩 개선
   const fetchQuotes = async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get(`${API_URL}/quotes`);
-      
-      // 백엔드가 { success: true, data: [...] } 구조로 안전하게 감싸 보낸 데이터 매핑
-      if (response.data && response.data.success === true) {
-        setBoardList(response.data.data || []);
-      } else if (Array.isArray(response.data)) {
-        // 혹시 모를 기존 레거시 배열 대응 예외처리
-        setBoardList(response.data);
-      } else {
-        setBoardList([]);
-      }
+      const response = await api.get('/quotes');
+      setBoardList(Array.isArray(response.data) ? response.data : (response.data.data || []));
     } catch (error) {
       console.error('견적 목록 로드 실패:', error);
       setBoardList([]);
@@ -66,32 +42,25 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
   useEffect(() => { setActiveTab(initialTab); handleBackToList(); }, [initialTab]);
   useEffect(() => { if (activeTab === 'list') fetchQuotes(); }, [activeTab]);
 
-  // 2. 글쓰기 탭 진입 시 대기표 자동 수령
   useEffect(() => {
     const fetchInitToken = async () => {
       if (activeTab === 'write') {
         try {
-          const res = await axios.get(`${API_URL}/quotes/init`);
+          const res = await api.get('/quotes/init');
           setServerTid(res.data.tid);
           setIsCaptchaRequired(false);
-          setCaptchaInput('');
-        } catch (err) {
-          console.error('세션 초기화 실패', err);
-        }
+        } catch (err) { console.error('세션 초기화 실패', err); }
       }
     };
     fetchInitToken();
   }, [activeTab]);
 
-  // 3. 캡차 문제 받아오기 함수
   const fetchCaptcha = async () => {
     try {
-      const res = await axios.get(`${API_URL}/quotes/quiz`);
+      const res = await api.get('/quotes/quiz');
       setCaptchaInfo({ question: res.data.question, cid: res.data.cid });
       setIsCaptchaRequired(true);
-    } catch (err) {
-      console.error('퀴즈 로드 실패', err);
-    }
+    } catch (err) { console.error('퀴즈 로드 실패', err); }
   };
 
   const handleInputChange = (e) => {
@@ -102,376 +71,214 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
   const handleBackToList = () => {
     setSelectedQuote(null);
     setIsEditMode(false);
-    setAdminReplyInput('');
     setPasswordInput('');
   };
 
-  // 🎯 글 클릭 시 이벤트 처리 핸들러
   const handleRowClick = async (post) => {
-    if (isLoggedIn) {
-      try {
-        const res = await axios.get(`${API_URL}/quotes/${post.id}`);
+    try {
+      if (post.isSecret && !isLoggedIn) {
+        setPendingQuoteId(post.id);
+        setShowPasswordModal(true);
+      } else {
+        const res = await api.get(`/quotes/${post.id}`);
         setSelectedQuote(res.data);
-        setAdminReplyInput(res.data.reply || '');
-      } catch (err) { alert('데이터를 불러오지 못했습니다.'); }
-    } else if (post.isSecret) {
-      setPendingQuoteId(post.id);
-      setShowPasswordModal(true);
-    } else {
-      try {
-        const res = await axios.get(`${API_URL}/quotes/${post.id}`);
-        setSelectedQuote(res.data);
-      } catch (err) { alert('데이터를 불러오지 못했습니다.'); }
+      }
+    } catch (err) {
+      alert('데이터를 불러오지 못했습니다.');
     }
   };
 
-  // 🔑 비밀번호 검증 요청
   const handlePasswordVerify = async (e) => {
-    preventDefault();
+    e.preventDefault();
     try {
-      const res = await axios.post(`${API_URL}/quotes/${pendingQuoteId}/verify`, { password: passwordInput });
+      const res = await api.post(`/quotes/${pendingQuoteId}/verify`, { password: passwordInput });
       setSelectedQuote(res.data);
       setShowPasswordModal(false);
+      setPasswordInput('');
     } catch (err) {
       alert('비밀번호가 올바르지 않습니다.');
     }
   };
 
-  // 👑 [신규 추가] 관리자 전용 견적글 무조건 삭제 핸들러
-  const handleDeleteQuote = async (id, e) => {
-    e.stopPropagation(); // 🛡️ 부모 요소인 tr 행 클릭 이벤트 버블링 차단 (디테일 뷰 진입 방지)
-    if (!window.confirm('정말 이 견적 문의를 데이터베이스에서 완전 삭제하시겠습니까?')) return;
-    
+  const handleDeleteQuote = async () => {
+    if (!window.confirm('정말 이 견적 문의를 완전 삭제하시겠습니까?')) return;
     try {
-      // 대시보드 권한 헤더 설정을 위해 기존 로컬스토리지 토큰을 탑재하여 요청 발송
-      const token = localStorage.getItem('token');
-      await axios.delete(`${API_URL}/quotes/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.delete(`/quotes/${selectedQuote.id}`, { data: { password: passwordInput } });
       alert('견적글이 정상적으로 삭제되었습니다.');
-      fetchQuotes(); // 목록 새로고침
+      handleBackToList();
+      fetchQuotes();
     } catch (err) {
-      console.error('삭제 실패:', err);
-      alert('삭제 권한이 없거나 서버 처리에 실패했습니다.');
+      alert('삭제 권한이 없거나 비밀번호가 틀렸습니다.');
     }
   };
 
-  // 4. All-200-OK 성공 본문 수신 및 가비아 우회 분기문 전면 개편
-  const handleSubmit = async (e) => {
-    preventDefault();
-
-    if (!formData.privacyAgreement) {
-      alert('개인정보 수집 및 이용에 동의하셔야 견적 문의 접수가 가능합니다.');
-      return;
-    }
-
+  const handleUpdateSubmit = async () => {
     try {
-      const payload = {
-        ...formData,
-        tid: serverTid,
-        cid: captchaInfo.cid || undefined,
-        ans: captchaInput || undefined
-      };
-
-      const res = await axios.post(`${API_URL}/quotes/`, payload);
-      
-      // 🛡️ 가비아 웹서버 우회 대응: HTTP Status 200 내부의 success 플래그 가로채기
-      if (res.data && res.data.success === false) {
-        if (res.data.code === 'CAPTCHA_REQUIRED') {
-          alert('보안 검증이 필요합니다. 아래에 나타난 자동 등록 방지 코드를 입력해 주세요.');
-          fetchCaptcha(); // 캡차 문제판 정상 가동
-        } else {
-          alert(res.data.message || '접수 실패');
-        }
-        return; // 등록 로직 일시 중단 및 화면 유지
-      }
-
-      // 진짜 등록 성공 시에만 통과 실행
-      alert('견적 문의가 정상적으로 접수되었습니다.');
-      setFormData({ company: '', name: '', phone: '', email: '', title: '', content: '', isSecret: true, password: '', privacyAgreement: false });
-      setCaptchaInput('');
-      setCurrentPage(1); // 🔑 글 작성 완료 후 목록으로 갈 때 1페이지로 리셋
-      setActiveTab('list');
-    } catch (error) {
-      alert('서버 네트워크 통신이 원활하지 않습니다. 잠시 후 다시 전송해 주세요.');
-    }
-  };
-
-  // ✍️ 작성자 글 수정 제출
-  const handleUpdateSubmit = async (e) => {
-    preventDefault();
-    try {
-      const res = await axios.put(`${API_URL}/quotes/${selectedQuote.id}`, selectedQuote);
+      await api.put(`/quotes/${selectedQuote.id}`, { ...editFormData, password: passwordInput });
       alert('문의 내용이 수정되었습니다.');
-      setSelectedQuote(res.data);
       setIsEditMode(false);
+      const res = await api.get(`/quotes/${selectedQuote.id}`);
+      setSelectedQuote(res.data);
     } catch (err) {
       alert('수정에 실패했습니다. 비밀번호를 다시 확인해 주세요.');
     }
   };
 
-  // 👑 관리자 답변 등록 제출
-  const handleAdminReplySubmit = async (e) => {
-    preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.privacyAgreement) return alert('개인정보 수집 및 이용에 동의해주세요.');
     try {
-      const res = await axios.put(`${API_URL}/quotes/${selectedQuote.id}/reply`, { reply: adminReplyInput });
-      alert('답변이 등록되었습니다.');
-      setSelectedQuote(res.data);
-    } catch (err) {
-      alert('답변 등록 실패');
-    }
+      const payload = { ...formData, tid: serverTid, cid: captchaInfo.cid || undefined, ans: captchaInput || undefined };
+      const res = await api.post('/quotes/', payload);
+      
+      if (res.data?.success === false && res.data.code === 'CAPTCHA_REQUIRED') {
+        alert('보안 검증이 필요합니다.');
+        fetchCaptcha();
+        return;
+      }
+      alert('견적 문의가 정상적으로 접수되었습니다.');
+      setFormData({ company: '', name: '', phone: '', email: '', title: '', content: '', isSecret: true, password: '', privacyAgreement: false });
+      setActiveTab('list');
+    } catch (error) { alert('접수 실패'); }
   };
 
-  // 🔑 [페이징 수학 연산 구역 세팅]
   const totalPages = Math.ceil(boardList.length / ITEMS_PER_PAGE);
-  const indexOfLastItem = currentPage * ITEMS_PER_PAGE;
-  const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE;
-  // 현재 페이지에 해당하는 데이터만 조각내기(slice)
-  const currentQuotes = boardList.slice(indexOfFirstItem, indexOfLastItem);
+  const currentQuotes = boardList.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   return (
-    <div className="w-full min-h-screen bg-neutral-50 pt-28 pb-20 px-6 md:px-12">
-      <div className="max-w-4xl mx-auto">
-        
-        {/* 페이지 헤더 */}
-        <div className="text-center space-y-2 mb-12">
-          <h1 className="text-2xl md:text-3xl font-light tracking-tight text-neutral-950">견적문의</h1>
-          <p className="text-xs text-neutral-400">다온씨엔이는 고객님의 성공적인 비즈니스를 위한 최적의 솔루션을 제안합니다.</p>
+    <div className="w-full min-h-screen bg-slate-50 text-neutral-900 font-sans antialiased selection:bg-blue-500/10 selection:text-blue-600">
+      
+      {/* 🌌 회사소개 스타일 헤더 디자인 */}
+      <header className="bg-white border-b border-neutral-200/60 pt-32 pb-16 px-4 md:px-10 text-center relative overflow-hidden">
+        <div className="max-w-4xl mx-auto space-y-3 relative z-10">
+          <div className="text-[10px] tracking-widest font-black text-blue-500 uppercase font-mono bg-blue-50 px-3 py-1 rounded-full inline-block">
+            DAON C&E QUOTE
+          </div>
+          <h1 className="text-3xl md:text-4xl font-black text-[oklch(0.38_0.07_259.56)] tracking-tight">
+            견적문의
+          </h1>
+          <p className="text-xs md:text-sm text-neutral-400 font-medium tracking-wide">
+            다온씨엔이의 신속한 응답을 약속드립니다.
+          </p>
         </div>
 
-        {/* 대시보드가 열려있지 않은 상태일 때만 상단 탭 노출 */}
+        {/* 🎛️ 중앙 세그먼트 스위치 탭 */}
         {!selectedQuote && (
-          <div className="flex border-b border-neutral-200 mb-8">
-            <button onClick={() => setActiveTab('list')} className={`py-3 px-6 text-sm font-medium transition-all border-b-2 ${activeTab === 'list' ? 'border-neutral-950 text-neutral-950 font-bold' : 'border-transparent text-neutral-400 hover:text-neutral-600'}`}>문의 목록</button>
-            <button onClick={() => setActiveTab('write')} className={`py-3 px-6 text-sm font-medium transition-all border-b-2 ${activeTab === 'write' ? 'border-neutral-950 text-neutral-950 font-bold' : 'border-transparent text-neutral-400 hover:text-neutral-600'}`}>문의하기</button>
+          <div className="max-w-md mx-auto mt-10 p-1.5 bg-neutral-100 rounded-2xl border border-neutral-200/40 flex gap-1 shadow-inner">
+            <button
+              onClick={() => setActiveTab('list')}
+              className={`flex-1 text-xs font-bold py-3 rounded-xl transition-all duration-300 cursor-pointer ${
+                activeTab === 'list'
+                  ? 'bg-white text-[oklch(0.38_0.07_259.56)] shadow-md font-black scale-[1.01]'
+                  : 'text-neutral-400 hover:text-neutral-800'
+              }`}
+            >
+              문의 목록
+            </button>
+            <button
+              onClick={() => setActiveTab('write')}
+              className={`flex-1 text-xs font-bold py-3 rounded-xl transition-all duration-300 cursor-pointer ${
+                activeTab === 'write'
+                  ? 'bg-white text-[oklch(0.38_0.07_259.56)] shadow-md font-black scale-[1.01]'
+                  : 'text-neutral-400 hover:text-neutral-800'
+              }`}
+            >
+              문의하기
+            </button>
           </div>
         )}
+      </header>
 
-        {/* 📋 상태 1: 리스트화면 */}
+      <main className="max-w-5xl mx-auto py-12 md:py-16 px-4 md:px-10 animate-fadeIn">
+        {/* 1. 리스트 뷰 */}
         {!selectedQuote && activeTab === 'list' && (
           <>
-            <div className="bg-white rounded-2xl border border-neutral-200/60 shadow-sm overflow-hidden">
-              <table className="w-full text-left border-collapse text-sm">
-                <thead>
-                  <tr className="bg-neutral-50 text-neutral-400 font-medium text-xs border-b border-neutral-200">
-                    <th className="py-4 px-4 w-16 text-center">번호</th>
-                    <th className="py-4 px-4">제목</th>
-                    <th className="py-4 px-4 w-28 text-center">작성자</th>
-                    <th className="py-4 px-4 w-32 text-center">등록일</th>
-                    <th className="py-4 px-4 w-28 text-center">상태</th>
-                    {/* 🔑 관리자 로그인 시에만 삭제를 위한 '관리' 탭 헤더 오픈 */}
-                    {isLoggedIn && <th className="py-4 px-4 w-20 text-center">관리</th>}
+            <div className="bg-white rounded-[2.5rem] border border-neutral-200/50 shadow-sm overflow-hidden text-left">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-50 text-slate-400 text-[10px] uppercase font-bold border-b border-slate-200">
+                  <tr>
+                    <th className="py-4 px-6 text-center">번호</th>
+                    <th className="py-4 px-6">제목</th>
+                    <th className="py-4 px-6 text-center">작성자</th>
+                    <th className="py-4 px-6 text-center">접수 날짜</th>
+                    <th className="py-4 px-6 text-center">상태</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-neutral-100 text-neutral-700">
-                  {isLoading ? (
-                    <tr><td colSpan={isLoggedIn ? 6 : 5} className="py-12 text-center text-neutral-400 text-xs">로딩 중...</td></tr>
-                  ) : boardList.length === 0 ? (
-                    <tr><td colSpan={isLoggedIn ? 6 : 5} className="py-12 text-center text-neutral-400 text-xs">등록된 내역이 없습니다.</td></tr>
-                  ) : (
-                    /* 전체 리스트였던 boardList 대신 슬라이싱된 currentQuotes 배열을 맵핑 */
-                    currentQuotes.map((post) => (
-                      <tr key={post.id} className="hover:bg-neutral-50/50 cursor-pointer transition-colors" onClick={() => handleRowClick(post)}>
-                        <td className="py-4 px-4 text-center text-neutral-400 text-xs">{post.id}</td>
-                        <td className="py-4 px-4 font-medium text-neutral-900">
-                          <div className="flex items-center gap-2">
-                            {post.isSecret && (
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5 text-neutral-400"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>
-                            )}
-                            <span className="truncate block max-w-[200px] sm:max-w-none">{post.title}</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-4 text-center text-xs text-neutral-500 whitespace-nowrap">{post.name}</td>
-                        <td className="py-4 px-4 text-center text-xs text-neutral-400 whitespace-nowrap">{post.createdAt?.split('T')[0]}</td>
-                        <td className="py-4 px-4 text-center">
-                          <span className={`inline-block text-[11px] font-bold px-2.5 py-1 rounded-md whitespace-nowrap ${post.status === '답변완료' ? 'bg-neutral-900 text-white' : 'bg-neutral-100 text-neutral-500'}`}>
-                            {post.status}
-                          </span>
-                        </td>
-                        {/* 🔑 관리자 로그인 시에만 삭제 버튼 셀 생성 */}
-                        {isLoggedIn && (
-                          <td className="py-4 px-4 text-center" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              onClick={(e) => handleDeleteQuote(post.id, e)}
-                              className="text-[11px] font-bold text-rose-600 hover:text-rose-800 border border-rose-200 hover:border-rose-300 bg-rose-50/50 px-2.5 py-1 rounded-md transition-all active:scale-95 cursor-pointer"
-                            >
-                              삭제
-                            </button>
-                          </td>
-                        )}
-                      </tr>
-                    ))
-                  )}
+                <tbody className="divide-y divide-slate-100">
+                  {currentQuotes.map((post) => (
+                    <tr key={post.id} className="hover:bg-slate-50 cursor-pointer transition" onClick={() => handleRowClick(post)}>
+                      <td className="py-4 px-6 text-center text-xs text-slate-400 font-mono">{post.id}</td>
+                      <td className="py-4 px-6 text-sm font-bold text-slate-900">{post.title}</td>
+                      <td className="py-4 px-6 text-center text-xs text-slate-500">{post.name}</td>
+                      <td className="py-4 px-6 text-center text-xs text-slate-400 font-mono">{post.createdAt?.split('T')[0]}</td>
+                      <td className="py-4 px-6 text-center"><span className={`text-[10px] font-bold px-3 py-1 rounded-full ${post.status === '답변완료' ? 'bg-blue-50 text-blue-500 border border-blue-100' : 'bg-slate-100 text-slate-500'}`}>{post.status}</span></td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
-
-            {/* 🔑 [페이징 바 장착] 로딩 중이 아니고 데이터가 한 개 이상 존재할 때만 하단에 렌더링 */}
-            {!isLoading && boardList.length > 0 && (
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={(page) => {
-                  setCurrentPage(page);
-                }}
-              />
-            )}
+            <div className="mt-8"><Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} /></div>
           </>
         )}
 
-        {/* 🔍 상태 2: 상세 보기 화면 (수정 모드 분기 포함) */}
-        {selectedQuote && (
-          <div className="bg-white rounded-2xl border border-neutral-200/60 shadow-sm p-6 md:p-8 space-y-6">
-            <div className="flex justify-between items-center border-b border-neutral-100 pb-4">
-              <button onClick={handleBackToList} className="text-xs font-semibold text-neutral-400 hover:text-neutral-900 flex items-center gap-1">← 목록으로 가기</button>
-              <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md ${selectedQuote.status === '답변완료' ? 'bg-neutral-900 text-white' : 'bg-neutral-100 text-neutral-500'}`}>{selectedQuote.status}</span>
-            </div>
-
-            {!isEditMode ? (
-              <div className="space-y-6">
-                <div>
-                  <span className="text-xs text-neutral-400 font-medium">{selectedQuote.company || '개인 방문자'} — {selectedQuote.name} 고객님</span>
-                  <h2 className="text-xl font-bold text-neutral-900 mt-1">{selectedQuote.title}</h2>
-                  <p className="text-[11px] text-neutral-300 mt-0.5">등록일: {selectedQuote.createdAt?.replace('T', ' ').slice(0, 16)}</p>
-                </div>
-                
-                {(isLoggedIn || selectedQuote.phone) && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-neutral-50 p-4 rounded-xl text-xs text-neutral-600">
-                    <div><strong>연락처:</strong> {selectedQuote.phone}</div>
-                    <div><strong>이메일:</strong> {selectedQuote.email}</div>
-                  </div>
-                )}
-
-                <div className="text-sm text-neutral-800 leading-relaxed min-h-[150px] whitespace-pre-wrap pt-2">
-                  {selectedQuote.content}
-                </div>
-
-                {!isLoggedIn && (
-                  <div className="flex justify-end pt-4 border-t border-neutral-100">
-                    <button onClick={() => setIsEditMode(true)} className="text-xs font-bold border border-neutral-200 bg-white px-4 py-2 rounded-xl hover:bg-neutral-50 transition-all text-neutral-700">정보 수정하기</button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <form onSubmit={handleUpdateSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div><label className="block text-xs font-semibold text-neutral-400 mb-1">작성자 성함</label><input type="text" required className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-2.5" value={selectedQuote.name} onChange={(e) => setSelectedQuote({...selectedQuote, name: e.target.value})} /></div>
-                  <div><label className="block text-xs font-semibold text-neutral-400 mb-1">연락처</label><input type="text" required className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-2.5" value={selectedQuote.phone} onChange={(e) => setSelectedQuote({...selectedQuote, phone: e.target.value})} /></div>
-                </div>
-                <div><label className="block text-xs font-semibold text-neutral-400 mb-1">문의 제목</label><input type="text" required className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-2.5" value={selectedQuote.title} onChange={(e) => setSelectedQuote({...selectedQuote, title: e.target.value})} /></div>
-                <div><label className="block text-xs font-semibold text-neutral-400 mb-1">상세 내역 기재</label><textarea required rows={5} className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-2.5 resize-none" value={selectedQuote.content} onChange={(e) => setSelectedQuote({...selectedQuote, content: e.target.value})} /></div>
-                <div><label className="block text-xs font-semibold text-neutral-400 mb-1">본인 인증 비밀번호 재확인</label><input type="password" required placeholder="기존 글 비밀번호를 입력하세요." className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-2.5" value={selectedQuote.password || ''} onChange={(e) => setSelectedQuote({...selectedQuote, password: e.target.value})} /></div>
-                <div className="flex justify-end gap-2 pt-2"><button type="button" onClick={() => setIsEditMode(false)} className="text-xs border px-4 py-2 rounded-xl">취소</button><button type="submit" className="text-xs bg-neutral-950 text-white font-bold px-4 py-2 rounded-xl">수정 완료</button></div>
-              </form>
-            )}
-
-            <div className="mt-8 pt-6 border-t border-neutral-200 space-y-4">
-              <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider">상담 답변 내역</h3>
-              
-              {selectedQuote.reply && !isLoggedIn && (
-                <div className="bg-neutral-950 text-neutral-100 p-5 rounded-2xl space-y-2 shadow-sm">
-                  <div className="flex justify-between items-center text-[10px] text-neutral-400 font-bold"><span>DAON CNE 대외협력팀</span><span>{selectedQuote.replyAt?.split('T')[0]}</span></div>
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{selectedQuote.reply}</p>
-                </div>
-              )}
-
-              {!selectedQuote.reply && !isLoggedIn && <p className="text-xs text-neutral-400 italic">담당 부서에서 문의 사항을 확인하고 있습니다. 서류 검토 후 빠르게 답변해 드리겠습니다.</p>}
-
-              {isLoggedIn && (
-                <form onSubmit={handleAdminReplySubmit} className="space-y-3 bg-neutral-50 p-4 rounded-2xl border border-neutral-200/40">
-                  <label className="block text-xs font-bold text-neutral-600">관리자 전용 공식 코멘트 주입</label>
-                  <textarea rows={4} className="w-full text-sm border border-neutral-200 rounded-xl p-3 focus:outline-none resize-none bg-white" placeholder="이곳에 기재한 답변 내용이 실시간으로 고객 비밀글에 표시되며, 상태값이 자동으로 '답변완료'로 셋업됩니다. 공백으로 제출 시 접수대기로 변경됩니다." value={adminReplyInput} onChange={(e) => setAdminReplyInput(e.target.value)} />
-                  <div className="flex justify-end"><button type="submit" className="text-xs font-bold text-white bg-neutral-950 px-4 py-2 rounded-xl hover:bg-neutral-800">공식 답변 등록/수정</button></div>
-                </form>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ✍️ 상태 3: 문의하기 신규 글 작성 화면 */}
+        {/* 2. 작성 폼 */}
         {!selectedQuote && activeTab === 'write' && (
-          <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-neutral-200/60 shadow-sm p-6 md:p-8 space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div><label className="block text-xs font-semibold text-neutral-400 mb-2">회사명 / 기관명</label><input type="text" name="company" value={formData.company} onChange={handleInputChange} placeholder="주식회사 다온씨엔이" className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3" /></div>
-              <div><label className="block text-xs font-semibold text-neutral-400 mb-2">작성자 성함 *</label><input type="text" name="name" required value={formData.name} onChange={handleInputChange} placeholder="홍길동" className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3" /></div>
-              <div><label className="block text-xs font-semibold text-neutral-400 mb-2">連絡先 *</label><input type="tel" name="phone" required value={formData.phone} onChange={handleInputChange} placeholder="010-0000-0000" className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3" /></div>
-              <div><label className="block text-xs font-semibold text-neutral-400 mb-2">이메일 주소 *</label><input type="email" name="email" required value={formData.email} onChange={handleInputChange} placeholder="example@daoncne.com" className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3" /></div>
-            </div>
-            <div><label className="block text-xs font-semibold text-neutral-400 mb-2">문의 제목 *</label><input type="text" name="title" required value={formData.title} onChange={handleInputChange} placeholder="문의 사항 핵심 제목" className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3" /></div>
-            <div><label className="block text-xs font-semibold text-neutral-400 mb-2">상세 내역 기재 *</label><textarea name="content" required rows={6} value={formData.content} onChange={handleInputChange} placeholder="필요 장비, 공사 종류 등 상세 기재" className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3 resize-none" /></div>
-
-            {/* 1. 🍯 허니팟 필드 (사람 눈에는 숨김 처리, 로봇 유인용) */}
-            <div className="hidden" aria-hidden="true">
-              <input 
-                type="text" 
-                name="email_confirm" 
-                value={formData.email_confirm || ''} 
-                onChange={handleInputChange} 
-                tabIndex="-1" 
-                autoComplete="off" 
-              />
+          <form onSubmit={handleSubmit} className="bg-white/95 backdrop-blur-md p-8 md:p-10 rounded-[2.5rem] shadow-[0_25px_60px_rgba(0,0,0,0.02)] border border-slate-200/60 space-y-6 text-left">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="space-y-1.5"><label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">회사명</label><input name="company" className="w-full bg-slate-50/60 border border-slate-200/50 rounded-2xl px-5 py-3.5 text-sm outline-none focus:bg-white focus:border-blue-400 transition" onChange={handleInputChange} value={formData.company} /></div>
+              <div className="space-y-1.5"><label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">담당자명</label><input name="name" className="w-full bg-slate-50/60 border border-slate-200/50 rounded-2xl px-5 py-3.5 text-sm outline-none focus:bg-white focus:border-blue-400 transition" onChange={handleInputChange} value={formData.name} /></div>
+              <div className="space-y-1.5"><label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">연락처</label><input name="phone" className="w-full bg-slate-50/60 border border-slate-200/50 rounded-2xl px-5 py-3.5 text-sm outline-none focus:bg-white focus:border-blue-400 transition" onChange={handleInputChange} value={formData.phone} /></div>
+              <div className="space-y-1.5"><label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">이메일</label><input name="email" className="w-full bg-slate-50/60 border border-slate-200/50 rounded-2xl px-5 py-3.5 text-sm outline-none focus:bg-white focus:border-blue-400 transition" onChange={handleInputChange} value={formData.email} /></div>
             </div>
             
-            {/* 🔒 개인정보 수집 및 이용동의 박스 */}
-            <div className="space-y-2 bg-neutral-50 p-4 rounded-xl border border-neutral-200/60 text-xs text-neutral-600">
-              <p className="font-bold text-neutral-800">[필수] 개인정보 수집 및 이용 동의</p>
-              <div className="h-20 overflow-y-auto bg-white p-3 rounded-lg border border-neutral-200 text-[11px] leading-relaxed text-neutral-500">
-                주식회사 다온씨엔이는 고객님의 견적 상담 및 문의 사항 처리를 위해 아래와 같이 개인정보를 수집하고 있습니다.<br />
-                • 수집 및 이용 항목: 회사명/기관명, 작성자 성함, 연락처, 이메일 주소<br />
-                • 수집 및 이용 목적: 견적 문의 내역 검토, 맞춤 상담 제공 및 결과 회신<br />
-                • 보유 및 이용 기간: <strong>문의 처리 완료 후 3년간 보관</strong> (고객 응대 및 이력 관리를 위함이며, 법령에 따른 보유 기간 외에는 즉시 파기됩니다.)
-              </div>
-              <div className="flex items-center gap-2 pt-1">
-                <input 
-                  type="checkbox" 
-                  id="privacyAgreement" 
-                  name="privacyAgreement" 
-                  checked={formData.privacyAgreement} 
-                  onChange={handleInputChange} 
-                  className="w-4 h-4 accent-neutral-950 cursor-pointer"
-                />
-                <label htmlFor="privacyAgreement" className="font-medium text-neutral-700 cursor-pointer select-none">
-                  개인정보 수집 및 이용약관에 동의합니다.
-                </label>
-              </div>
+            <div className="space-y-1.5"><label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">문의 제목</label><input name="title" className="w-full bg-slate-50/60 border border-slate-200/50 rounded-2xl px-5 py-3.5 text-sm outline-none focus:bg-white focus:border-blue-400 transition" onChange={handleInputChange} value={formData.title} required /></div>
+            <div className="space-y-1.5"><label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">문의 내용</label><textarea name="content" rows={6} className="w-full bg-slate-50/60 border border-slate-200/50 rounded-2xl px-5 py-3.5 text-sm outline-none focus:bg-white focus:border-blue-400 transition" onChange={handleInputChange} value={formData.content} required /></div>
+            
+            <div className="flex items-center gap-6 p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
+              <label className="flex items-center gap-2 text-xs font-bold text-slate-600"><input type="checkbox" name="isSecret" checked={formData.isSecret} onChange={handleInputChange} /> 비밀글</label>
+              {formData.isSecret && <input type="password" name="password" placeholder="비밀번호" className="border border-slate-200 rounded-xl px-4 py-2 text-sm" onChange={handleInputChange} value={formData.password} />}
             </div>
 
-            {/* 2. 🤖 조건부 자동 등록 방지 인증 (isCaptchaRequired 가 true 일 때만 렌더링) */}
             {isCaptchaRequired && (
-              <div className="bg-blue-50/40 p-4 rounded-xl border border-blue-200/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fadeIn">
-                <div className="space-y-0.5">
-                  <p className="text-xs font-bold text-blue-950">보안 인증 추가 *</p>
-                  <p className="text-[11px] text-neutral-400">빠른 작성 속도로 인해 일시적 제한이 걸렸습니다. 사칙연산을 풀어주세요.</p>
-                </div>
-                <div className="flex items-center gap-2.5">
-                  <div className="bg-neutral-900 text-neutral-100 font-mono font-bold text-sm px-4 py-2.5 rounded-xl min-w-[85px] text-center select-none shadow-inner">
-                    {captchaInfo.question || '로드 중...'}
-                  </div>
-                  <button type="button" onClick={fetchCaptcha} className="p-2.5 text-neutral-400 hover:text-neutral-600 border bg-white rounded-xl shadow-sm"><svg xmlns="http://www.w3.org/2000/xl" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg></button>
-                  <input type="text" required placeholder="정답" value={captchaInput} onChange={(e) => setCaptchaInput(e.target.value)} className="w-24 text-sm border border-blue-200 rounded-xl px-3 py-2.5 text-center font-bold text-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-900 bg-white" />
-                </div>
+              <div className="p-5 bg-blue-50/50 rounded-2xl border border-blue-100 text-sm">
+                <p className="text-xs font-bold text-blue-500 mb-2">{captchaInfo.question}</p>
+                <input className="w-full border border-blue-200 p-3 rounded-xl" onChange={(e) => setCaptchaInput(e.target.value)} value={captchaInput} placeholder="정답을 입력하세요" />
               </div>
             )}
 
-            <div className="pt-4 border-t border-neutral-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-center gap-2"><input type="checkbox" id="isSecret" name="isSecret" checked={formData.isSecret} onChange={handleInputChange} className="w-4 h-4 accent-neutral-950" /><label htmlFor="isSecret" className="text-xs font-medium text-neutral-600">비밀글로 안전하게 보관 (추천)</label></div>
-              {formData.isSecret && <input type="password" name="password" required={formData.isSecret} value={formData.password} onChange={handleInputChange} placeholder="비밀번호 설정 (4자리 이상)" className="w-full sm:w-52 text-xs border border-neutral-200 rounded-xl px-4 py-2.5" />}
-            </div>
-            <div className="flex justify-end gap-3 pt-2"><button type="button" onClick={() => setActiveTab('list')} className="text-xs text-neutral-500 border bg-white px-5 py-3 rounded-xl">취소</button><button type="submit" className="text-xs font-bold text-white bg-neutral-950 px-6 py-3 rounded-xl shadow-sm">작성 완료하기</button></div>
+            <label className="flex items-center gap-2 text-xs font-bold text-slate-500">
+              <input type="checkbox" name="privacyAgreement" checked={formData.privacyAgreement} onChange={handleInputChange} required />
+              개인정보 수집 및 이용에 동의합니다.
+            </label>
+            
+            <button type="submit" className="w-full bg-blue-500 hover:bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-500/20 transition">문의 접수하기</button>
           </form>
         )}
 
-      </div>
+        {/* 3. 상세 뷰 */}
+        {selectedQuote && (
+          <div className="bg-white/95 backdrop-blur-md p-10 rounded-[2.5rem] border border-slate-200/60 shadow-sm space-y-6">
+            <button onClick={handleBackToList} className="text-xs font-bold text-slate-400 hover:text-blue-500 transition">← 목록으로</button>
+            <h2 className="text-xl font-bold text-slate-900">{selectedQuote.title}</h2>
+            <div className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">{selectedQuote.content}</div>
+            
+            <div className="flex gap-2 pt-6 border-t border-slate-100">
+              <button onClick={() => setIsEditMode(true)} className="text-sm font-bold text-blue-500 border border-blue-500 px-6 py-3 rounded-xl">수정</button>
+              <button onClick={() => { setPendingQuoteId(selectedQuote.id); setShowPasswordModal(true); }} className="text-sm font-bold text-rose-500 border border-rose-500 px-6 py-3 rounded-xl">삭제</button>
+            </div>
+          </div>
+        )}
+      </main>
 
-      {/* 🔑 비밀번호 확인용 라이트박스 모달 팝업 */}
       {showPasswordModal && (
         <div className="fixed inset-0 bg-neutral-950/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-sm rounded-2xl p-6 border border-neutral-200 shadow-2xl space-y-4 animate-scaleUp">
-            <div><h4 className="font-bold text-neutral-900 text-base">비밀글 인증 패널</h4><p className="text-xs text-neutral-400 mt-0.5">글 작성 시 입력했던 본인확인용 비밀번호를 입력하세요.</p></div>
-            <form onSubmit={handlePasswordVerify} className="space-y-3">
-              <input type="password" required autoFocus className="w-full text-sm border border-neutral-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-neutral-900" placeholder="비밀번호 4자리 입력" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} />
-              <div className="flex gap-2"><button type="button" onClick={() => { setShowPasswordModal(false); setPasswordInput(''); }} className="flex-1 text-xs font-medium text-neutral-500 border border-neutral-100 py-3 rounded-xl hover:bg-neutral-50">닫기</button><button type="submit" className="flex-1 text-xs font-bold text-white bg-neutral-950 py-3 rounded-xl hover:bg-neutral-800">본인 확인 완료</button></div>
-            </form>
+          <div className="bg-white p-8 rounded-[2rem] max-w-sm w-full space-y-4 shadow-2xl">
+            <h3 className="font-bold text-sm text-slate-700">비밀번호 확인</h3>
+            <input type="password" className="w-full border border-slate-200 p-4 rounded-2xl" placeholder="비밀번호" onChange={(e) => setPasswordInput(e.target.value)} />
+            <div className="flex gap-2">
+              <button onClick={pendingQuoteId ? handlePasswordVerify : handleDeleteQuote} className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-4 rounded-2xl font-bold">확인</button>
+              <button onClick={() => setShowPasswordModal(false)} className="flex-1 bg-slate-200 py-4 rounded-2xl font-bold">취소</button>
+            </div>
           </div>
         </div>
       )}

@@ -5,10 +5,9 @@ import AdminPostAdmin from './AdminPostAdmin';
 import MainSlideAdmin from './MainSlideAdmin';
 import AdminUserAdmin from './AdminUserAdmin';
 import AdminCompanyAdmin from './AdminCompanyAdmin';
-import AdminPolicyAdmin from './AdminPolicyAdmin'; // 정책 관리 컴포넌트
+import AdminPolicyAdmin from './AdminPolicyAdmin'; 
 import MobileUploadModal from '../../components/MobileUploadModal';
-
-import axiosOriginal from 'axios';
+import api from '../../api/axios'; // 🔑 통합된 API 인스턴스 사용
 
 const DEBUG_ALLOWED_EMAIL = 'hello.g901@kakao.com';
 
@@ -32,9 +31,8 @@ const AdminDashboard = ({
     if (!isLoggedIn) {
       navigate('/');
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn, navigate]);
 
-  // 🔑 Welcome 자리를 대체할 내비게이션용 동적 텍스트 매핑 딕셔너리
   const viewTitles = {
     posts: '콘텐츠 관리',
     slides: '메인 슬라이드 관리',
@@ -47,47 +45,32 @@ const AdminDashboard = ({
   const handleMobileUpload = async ({ file, content }) => {
     try {
       const formData = new FormData();
+      if (file) formData.append('image', file, file.name || 'mobile-upload.jpg');
       
-      // 1. 파일 세팅 (💡 백엔드 컨트롤러에서 사진을 받는 필드명이 'image'인지 'file'인지 확인 후 맞춰주세요)
-      if (file) {
-        formData.append('image', file, file.name || 'mobile-upload.jpg');
-      }
-      
-      // 2. 글 내용 세팅
       formData.append('content', content);
       
-      // 3. 제목 자동 생성 (내용의 첫 15글자) 및 카테고리 지정
       const title = content.length > 15 ? content.substring(0, 15) + '...' : content || '모바일 업로드';
       formData.append('title', title);
-      
-      // 현재 보고 있는 탭(예: portfolio)을 카테고리로 같이 보내줍니다.
       formData.append('category', activeTab || 'portfolio');
 
-      const token = localStorage.getItem('access_token');
-      
-      // 💡 백엔드의 실제 포트폴리오(posts) 생성 엔드포인트 주소로 변경해 주세요!
-      await axiosOriginal.post(`${import.meta.env.VITE_API_URL}/posts`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          Authorization: `Bearer ${token}`
-        }
+      // 🔑 api 인스턴스 사용 (Authorization 헤더 자동 주입)
+      await api.post('/posts', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
 
       alert('포트폴리오가 성공적으로 업로드되었습니다! 🎉');
       
-      // 성공 후 즉시 게시물 목록 새로고침
       if (fetchPosts) fetchPosts(); 
-
     } catch (error) {
       console.error('포트폴리오 모바일 업로드 실패:', error);
-      alert('업로드 중 문제가 발생했습니다. 관리자 세션이 만료되었는지 확인해 주세요.');
+      alert('업로드 중 문제가 발생했습니다. 권한이나 세션을 확인해 주세요.');
     }
   };
 
   return (
     <div className="flex bg-[#eef2f7] min-h-screen w-full relative font-sans antialiased text-slate-800 tracking-tight">
       
-      {/* 왼쪽 사이드바 컬럼 */}
+      {/* 사이드바 */}
       <aside className="w-24 md:w-64 bg-white/70 backdrop-blur-md flex flex-col h-screen sticky top-0 border-r border-slate-200/50 p-6 justify-between z-[100] transition-all">
         <div className="space-y-8">
           <div className="px-3 py-2 flex items-center gap-2">
@@ -136,10 +119,8 @@ const AdminDashboard = ({
         </div>
       </aside>
 
-      {/* 우측 메인 오퍼레이션 보드 */}
+      {/* 메인 보드 */}
       <main className="flex-1 p-6 md:p-12 relative overflow-x-hidden flex flex-col space-y-6">
-        
-        {/* 🔑 [구조 변경] Welcome 자리에 실시간 내비게이션 인덱서 연동 */}
         <div className="flex justify-between items-center px-2">
           <div>
             <div className="text-[10px] uppercase tracking-widest font-bold text-slate-400 font-mono flex items-center gap-1.5">
@@ -156,7 +137,6 @@ const AdminDashboard = ({
           </div>
         </div>
 
-        {/* 하단 투명 글래스 패널 컨테이너 */}
         <div className="flex-1">
           {adminView === 'posts' && (
             <AdminPostAdmin 
@@ -179,7 +159,6 @@ const AdminDashboard = ({
         </div>
       </main>
 
-      {/* 🚀 콘텐츠 관리 게시판에만 등장하는 플로팅 메뉴 (FAB) & 업로드 모달 */}
       {adminView === 'posts' && (
         <>
           <button
@@ -196,7 +175,6 @@ const AdminDashboard = ({
           />
         </>
       )}
-
     </div>
   );
 };

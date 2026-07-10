@@ -1,8 +1,7 @@
 // daon-frontend/src/pages/admin/AdminUserAdmin.jsx
 import React, { useState, useEffect } from 'react';
-import axiosOriginal from 'axios';
+import api from '../../api/axios'; // 🔑 통합 API 인스턴스 사용
 import Pagination from '../../components/Pagination';
-import { API_URL } from '../../config';
 
 const formatPhone = (num) => {
   if (!num) return '';
@@ -25,29 +24,22 @@ const AdminUserAdmin = ({ loggedInEmail }) => {
   const [editingUser, setEditingUser] = useState(null); 
   const [editEmail, setEditEmail] = useState('');
   const [editPassword, setEditPassword] = useState('');
-  const [editName, setEditName] = useState('');       
+  const [editName, setEditName] = useState('');         
   const [editPhone, setEditPhone] = useState('');
   const [editRole, setEditRole] = useState('일반 관리자');
 
-  const axiosInstance = axiosOriginal.create({ baseURL: API_URL });
-  axiosInstance.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-    return config;
-  });
-
-  // 🔑 [완전 격리 해결] 대시보드 프롭스가 누락되더라도 로컬 스토리지에서 직접 계정을 꺼내오는 원천 필터 구축
   const currentRequestingEmail = loggedInEmail || localStorage.getItem('loggedInEmail') || '';
 
   const fetchUsers = async () => {
     try { 
-      // 🔑 유동적으로 확보한 이메일 스냅샷을 백엔드 쿼리에 안전하게 바인딩합니다.
-      const res = await axiosInstance.get(`/users?requestingEmail=${currentRequestingEmail}`); 
+      // 🔑 api 인스턴스 사용하여 GET 요청
+      const res = await api.get(`/users?requestingEmail=${currentRequestingEmail}`); 
       setUsers(res.data); 
-    } catch (e) {}
+    } catch (e) {
+      console.error('사용자 목록 로드 실패', e);
+    }
   };
 
-  // 🔑 동기화 타겟을 currentRequestingEmail 변수로 변경하여 즉시 추적 리스닝 가동
   useEffect(() => { 
     fetchUsers(); 
   }, [currentRequestingEmail]);
@@ -55,7 +47,13 @@ const AdminUserAdmin = ({ loggedInEmail }) => {
   const handleCreateUser = async () => {
     if (!newEmail || !newPassword) { alert('이메일과 비밀번호를 입력해 주세요.'); return; }
     try {
-      await axiosInstance.post('/users', { email: newEmail, password: newPassword, name: newUserName, phone: newUserPhone, role: newUserRole });
+      await api.post('/users', { 
+        email: newEmail, 
+        password: newPassword, 
+        name: newUserName, 
+        phone: newUserPhone, 
+        role: newUserRole 
+      });
       alert('새로운 관리자 계정이 생성되었습니다.');
       setNewEmail(''); setNewPassword(''); setNewUserName(''); setNewUserPhone(''); setNewRole('일반 관리자');
       setUserPage(1);
@@ -66,8 +64,12 @@ const AdminUserAdmin = ({ loggedInEmail }) => {
   const handleUpdateUser = async () => {
     if (!editEmail) { alert('이메일은 필수입니다.'); return; }
     try {
-      await axiosInstance.patch(`/users/${editingUser.id}`, {
-        email: editEmail, password: editPassword || undefined, name: editName, phone: editPhone, role: editRole
+      await api.patch(`/users/${editingUser.id}`, {
+        email: editEmail, 
+        password: editPassword || undefined, 
+        name: editName, 
+        phone: editPhone, 
+        role: editRole
       });
       alert('계정 정보가 성공적으로 수정되었습니다.');
       setEditingUser(null); setEditPassword('');
@@ -134,9 +136,8 @@ const AdminUserAdmin = ({ loggedInEmail }) => {
                         <button onClick={() => { setEditingUser(u); setEditEmail(u.email); setEditName(u.name || ''); setEditPhone(u.phone || ''); setEditRole(u.role || '일반 관리자'); }} className="cursor-pointer text-[11px] font-bold px-3 py-1.5 rounded-xl bg-blue-50 text-blue-500 hover:bg-blue-100 transition-all active:scale-95 whitespace-nowrap">수정</button>
                         
                         {u.email !== 'hello.g901@kakao.com' ? (
-                          <button onClick={async () => { if(confirm('삭제하시겠습니까?')) { await axiosInstance.delete(`/users/${u.id}`); fetchUsers(); } }} className="cursor-pointer text-[11px] font-bold px-3 py-1.5 rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-100 transition-all active:scale-95 whitespace-nowrap">삭제</button>
+                          <button onClick={async () => { if(confirm('삭제하시겠습니까?')) { await api.delete(`/users/${u.id}`); fetchUsers(); } }} className="cursor-pointer text-[11px] font-bold px-3 py-1.5 rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-100 transition-all active:scale-95 whitespace-nowrap">삭제</button>
                         ) : (
-                          /* 🛡️ 문구 대신 정교하게 설계된 퍼플 방패 배지 아이콘 장착 완료 */
                           <div 
                             className="px-3 py-1.5 rounded-xl bg-purple-50 text-purple-400 border border-purple-100/70 flex items-center justify-center shadow-sm select-none transition-all duration-300 hover:bg-purple-100/50" 
                             title="시스템 보호 계정 (삭제 불가)"
@@ -148,7 +149,6 @@ const AdminUserAdmin = ({ loggedInEmail }) => {
                         )}
                       </div>
                     </div>
-
                   </div>
                 ))}
               </div>

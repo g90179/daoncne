@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 // 🔑 실서버 404를 원천 차단하는 HashRouter 규격을 유지합니다.
 import { HashRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import api from './api/axios'; // 🔑 통합된 API 모듈 불러오기 (인터셉터 및 Refresh 로직 내장)
 import Layout from './components/Layout';
 import HomeView from './components/HomeView';
 import QuoteBoard from './pages/QuoteBoard';
@@ -12,12 +13,8 @@ import {
   PolicyView, 
   PolicyHistoryList, 
   PolicyHistoryDetail 
-} from './pages/policy'; //정책 공시 뷰어 추가
-import { 
-  Company
-} from './pages/about';
-import axiosOriginal from 'axios';
-import { API_URL } from './config';
+} from './pages/policy'; 
+import { Company } from './pages/about';
 import 'ckeditor5/ckeditor5.css';
 
 const KAKAO_MAP_KEY = 
@@ -36,39 +33,7 @@ function App() {
   const [companyInfo, setCompanyInfo] = useState({});
   const [isMapScriptLoaded, setIsMapScriptLoaded] = useState(false);
 
-  // 1. Axios 글로벌 인터셉터 기동
-  const axiosInstance = axiosOriginal.create({ baseURL: API_URL });
-  
-  axiosInstance.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-    return config;
-  });
-
-  axiosInstance.interceptors.response.use(
-    (response) => response,
-    async (error) => {
-      const originalRequest = error.config;
-      if (error.response?.status === 401 && !originalRequest._retry) {
-        originalRequest._retry = true;
-        try {
-          const refreshToken = localStorage.getItem('refreshToken');
-          const res = await axiosOriginal.post(`${API_URL}/auth/refresh`, { refreshToken });
-          const newAccessToken = res.data.access_token;
-          localStorage.setItem('token', newAccessToken);
-          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-          return axiosOriginal(originalRequest);
-        } catch (err) {
-          localStorage.clear();
-          alert('인증 정보가 만료되었습니다. 다시 로그인해 주세요.');
-          window.location.href = '/';
-        }
-      }
-      return Promise.reject(error);
-    }
-  );
-
-  // 2. 카카오맵 SDK 수동 로딩 프로세스
+  // 1. 카카오맵 SDK 수동 로딩 프로세스
   useEffect(() => {
     if (window.kakao && window.kakao.maps) {
       setIsMapScriptLoaded(true);
@@ -95,7 +60,7 @@ function App() {
     }
   }, []);
 
-  // 3. 전역 마운트 이펙트 페치 리스트
+  // 2. 전역 마운트 이펙트 페치 리스트
   useEffect(() => {
     fetchCompanyInfo();
   }, []);
@@ -107,22 +72,25 @@ function App() {
   const fetchPosts = async () => {
     try {
       const categoryParam = activeTab === '전체' ? '' : activeTab;
-      const response = await axiosInstance.get(`/posts?category=${categoryParam}`);
+      // 🔑 통합된 api 인스턴스 사용 (토큰 자동 주입 및 401 갱신 처리)
+      const response = await api.get(`/posts?category=${categoryParam}`);
       setPosts(response.data);
     } catch (e) {}
   };
 
   const fetchCompanyInfo = async () => {
     try {
-      const res = await axiosInstance.get('/company');
+      // 🔑 통합된 api 인스턴스 사용
+      const res = await api.get('/company');
       if (res.data) setCompanyInfo(res.data);
     } catch (e) {}
   };
 
-  // 4. 인증 제어기
+  // 3. 인증 제어기
   const handleLogin = async () => {
     try {
-      const res = await axiosInstance.post('/auth/login', { email, password });
+      // 🔑 통합된 api 인스턴스 사용
+      const res = await api.post('/auth/login', { email, password });
       localStorage.setItem('token', res.data.access_token);
       localStorage.setItem('refreshToken', res.data.refresh_token);
       localStorage.setItem('loggedInEmail', email);
@@ -130,7 +98,7 @@ function App() {
       setIsLoggedIn(true);
       setShowLoginModal(false);
       
-      // 🔑 [주소 전환 완료] 로그인 성공 시 새로운 은닉 주소인 admDashboard 로 진입시킵니다.
+      // 로그인 성공 시 관리자 페이지로 이동
       window.location.href = '/#/admDashboard'; 
     } catch (e) { alert('로그인 정보가 틀렸습니다.'); }
   };
@@ -152,7 +120,6 @@ function App() {
       />
 
       <Routes>
-        {/* 🏠 홈페이지 레이아웃 경로 그룹 */}
         <Route element={
           <Layout 
             companyInfo={companyInfo}
@@ -167,19 +134,14 @@ function App() {
             />
           } />
           <Route path="/quotes" element={<QuoteBoard isLoggedIn={isLoggedIn} />} />
-
-          {/* 🔑 [엔드포인트 개방] 푸터 링크가 도달할 정식 공시 규정 라우트 매핑 */}
           <Route path="/policy" element={<PolicyView />} />
           <Route path="/policy/history" element={<PolicyHistoryList />} />
           <Route path="/policy/history/:id" element={<PolicyHistoryDetail />} />
-
           <Route path="/company" element={<Company />} />
-          
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
         </Route>
 
-        {/* 🛠️ 🔑 [주소 전환 완료] 관리자 대시보드 엔드포인트를 /amddashboard 로 변경 라우팅합니다. */}
         <Route 
           path="/admDashboard" 
           element={

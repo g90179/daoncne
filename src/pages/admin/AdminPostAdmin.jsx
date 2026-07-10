@@ -1,27 +1,16 @@
 // daon-frontend/src/pages/admin/AdminPostAdmin.jsx
 import React, { useState, useEffect } from 'react';
-import axiosOriginal from 'axios';
+import api from '../../api/axios';
 import AdminPostEditor from '../../components/AdminPostEditor';
 import AdminPostList from '../../components/AdminPostList';
 import MobileUploadModal from '../../components/MobileUploadModal';
 import Pagination from '../../components/Pagination';
-import { API_URL } from '../../config';
 
 const AdminPostAdmin = ({ posts, fetchPosts, activeTab, setActiveTab }) => {
   const [editingPost, setEditingPost] = useState(null);
   const [postPage, setPostPage] = useState(1);
-  
-  // 🚀 [추가] 모바일 업로드 모달 상태 관리
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  
   const POSTS_PER_PAGE = 9;
-
-  const axiosInstance = axiosOriginal.create({ baseURL: API_URL });
-  axiosInstance.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token'); // 💡 기존 로컬스토리지 키 'token' 유지
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-    return config;
-  });
 
   // 탭 변경 시 페이지 1로 초기화 및 데이터 리페치
   useEffect(() => {
@@ -36,25 +25,15 @@ const AdminPostAdmin = ({ posts, fetchPosts, activeTab, setActiveTab }) => {
   const handleMobileUpload = async ({ file, content }) => {
     try {
       const formData = new FormData();
+      if (file) formData.append('files', file, file.name || 'mobile-upload.jpg');
       
-      // 1. 파일 세팅 (백엔드 컨트롤러에 맞춰 'image' 또는 'file'로 이름 확인 필요)
-      if (file) {
-        formData.append('files', file, file.name || 'mobile-upload.jpg');
-      }
-      
-      // 2. 내용 및 제목 세팅
       formData.append('content', content);
-      const title = content.length > 15 ? content.substring(0, 15) + '...' : content || '모바일 업로드';
-      formData.append('title', title);
-      
-      // 3. 현재 보고 있는 탭(현장사진 등)을 카테고리로 지정
+      formData.append('title', content.length > 15 ? content.substring(0, 15) + '...' : content || '모바일 업로드');
       formData.append('category', activeTab || '현장사진');
 
       // 인터셉터가 토큰을 알아서 넣어주므로, 여기서는 파일 타입 헤더만 추가하면 됩니다.
-      await axiosInstance.post('/posts', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        }
+      await api.post('/posts', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
 
       alert('모바일 업로드가 성공적으로 완료되었습니다! 🎉');
@@ -62,10 +41,9 @@ const AdminPostAdmin = ({ posts, fetchPosts, activeTab, setActiveTab }) => {
       // 업로드 성공 후 모달 닫기 및 리스트 새로고침
       setIsUploadModalOpen(false);
       fetchPosts(); 
-
     } catch (error) {
       console.error('모바일 업로드 실패:', error);
-      alert('업로드 중 오류가 발생했습니다. 권한이나 서버 상태를 확인해 주세요.');
+      alert('업로드 실패: ' + (error.response?.data?.message || '권한을 확인하세요.'));
     }
   };
 
@@ -110,7 +88,7 @@ const AdminPostAdmin = ({ posts, fetchPosts, activeTab, setActiveTab }) => {
               onEdit={(post) => { setEditingPost(post); }} 
               onDelete={async (id) => { 
                 if(confirm('삭제하시겠습니까?')) { 
-                  await axiosInstance.delete(`/posts/${id}`); 
+                  await api.delete(`/posts/${id}`); 
                   fetchPosts(); 
                 } 
               }} 
@@ -131,7 +109,6 @@ const AdminPostAdmin = ({ posts, fetchPosts, activeTab, setActiveTab }) => {
             onSuccess={() => { setEditingPost(null); fetchPosts(); }} 
           />
         </div>
-        
       </div>
 
       {/* 🚀 콘텐츠 관리용 모바일 플로팅 메뉴 (FAB) & 업로드 모달 */}

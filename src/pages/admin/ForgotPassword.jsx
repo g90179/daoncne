@@ -1,7 +1,6 @@
-// daon-frontend\src\pages\admin\ForgotPassword.jsx
+// daon-frontend/src/pages/admin/ForgotPassword.jsx
 import React, { useState } from 'react';
-import axios from 'axios';
-import { API_URL } from '../../config';
+import api from '../../api/axios'; // 🔑 통합된 API 인스턴스 사용
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -13,7 +12,8 @@ const ForgotPassword = () => {
     if (!email) return;
     setIsLoading(true);
     try {
-      await axios.post(`${API_URL}/auth/forgot-password`, { email });
+      // 🔑 api 인스턴스를 사용하여 호출 (API_URL import 불필요)
+      await api.post('/auth/forgot-password', { email });
       setIsSent(true);
     } catch (err) {
       alert(err.response?.data?.message || '링크 발송 실패');

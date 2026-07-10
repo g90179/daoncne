@@ -1,8 +1,7 @@
 // daon-frontend/src/pages/PolicyHistoryDetail.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import axios from 'axios';
-import { API_URL } from '../../config';
+import api from '../../api/axios'; // 🔑 통합된 API 모듈 불러오기
 
 const PolicyHistoryDetail = () => {
   const { id } = useParams();
@@ -12,8 +11,8 @@ const PolicyHistoryDetail = () => {
   useEffect(() => {
     const fetchDetail = async () => {
       try {
-        // 단건 조회를 위해 기존 policies에 쿼리를 날리거나 컨트롤러 단건 엔드포인트를 호출합니다.
-        const res = await axios.get(`${API_URL}/policies`);
+        // 🔑 api 인스턴스 사용 (baseURL 이미 적용됨)
+        const res = await api.get('/policies');
         const target = res.data.find(p => p.id === parseInt(id));
         setDoc(target);
       } catch (e) {

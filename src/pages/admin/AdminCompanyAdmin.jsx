@@ -1,7 +1,6 @@
 // daon-frontend/src/pages/admin/AdminCompanyAdmin.jsx
 import React, { useState, useEffect } from 'react';
-import axiosOriginal from 'axios';
-import { API_URL } from '../../config';
+import api from '../../api/axios'; // 🔑 통합된 API 모듈 불러오기
 
 const formatPhone = (num) => {
   if (!num) return '';
@@ -33,16 +32,10 @@ const AdminCompanyAdmin = ({ isSuperAdmin, isMapScriptLoaded, fetchGlobalCompany
     envKeyExist: '대기 중', scriptInjected: '대기 중', windowKakaoExist: '대기 중', sdkLoadComplete: '대기 중', geocoderLibraryExist: '대기 중'
   });
 
-  const axiosInstance = axiosOriginal.create({ baseURL: API_URL });
-  axiosInstance.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-    return config;
-  });
-
   const fetchLocalCompanyInfo = async () => {
     try {
-      const res = await axiosInstance.get('/company');
+      // 🔑 통합된 api 인스턴스 사용
+      const res = await api.get('/company');
       if (res.data) {
         setCompanyName(res.data.name || ''); setCeoName(res.data.ceo || ''); setBizNumber(res.data.bizNumber || '');
         setAddress(res.data.address || ''); setAddressDetail(res.data.addressDetail || ''); setPhone(res.data.phone || '');
@@ -50,7 +43,9 @@ const AdminCompanyAdmin = ({ isSuperAdmin, isMapScriptLoaded, fetchGlobalCompany
         if (res.data.lat) setLat(parseFloat(res.data.lat));
         if (res.data.lng) setLng(parseFloat(res.data.lng));
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error('회사 정보 로드 실패', e);
+    }
   };
 
   useEffect(() => { fetchLocalCompanyInfo(); }, []);
@@ -85,7 +80,11 @@ const AdminCompanyAdmin = ({ isSuperAdmin, isMapScriptLoaded, fetchGlobalCompany
 
   const handleSaveCompanyInfo = async () => {
     try {
-      await axiosInstance.post('/company', { name: companyName, ceo: ceoName, bizNumber, address, addressDetail, phone, email: companyEmail, fax: faxNumber, lat, lng });
+      // 🔑 통합된 api 인스턴스 사용
+      await api.post('/company', { 
+        name: companyName, ceo: ceoName, bizNumber, address, addressDetail, 
+        phone, email: companyEmail, fax: faxNumber, lat, lng 
+      });
       alert('회사 정보가 수정되었습니다.');
       if (fetchGlobalCompanyInfo) fetchGlobalCompanyInfo(); 
     } catch (e) { alert('회사 정보 저장 실패'); }
@@ -105,11 +104,7 @@ const AdminCompanyAdmin = ({ isSuperAdmin, isMapScriptLoaded, fetchGlobalCompany
   return (
     <div className="flex w-full relative animate-fadeIn">
       <div className="flex-1 max-w-4xl mx-auto space-y-6">
-        
-        {/* 🔑 다른 컴포넌트들과 통일성을 맞춘 소프트 글래스 메인 컨테이너 카드 */}
         <div className="bg-white/95 backdrop-blur-md p-6 md:p-10 rounded-[2.5rem] shadow-[0_25px_60px_rgba(0,0,0,0.02)] border border-white/70 space-y-6">
-          
-          {/* 내부 탑 서브 제어 헤더 */}
           <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
             <h3 className="text-base font-bold text-[oklch(0.38_0.07_259.56)] tracking-tight">
               🏢 기업 기본 인프라 설정
@@ -124,9 +119,7 @@ const AdminCompanyAdmin = ({ isSuperAdmin, isMapScriptLoaded, fetchGlobalCompany
             )}
           </div>
 
-          {/* 메인 데이터 입력 그리드 레이아웃 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-left">
-            
             <div className="space-y-1.5">
               <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">회사명 *</label>
               <input type="text" placeholder="회사명 입력" className="w-full bg-slate-50/60 border border-slate-200/50 rounded-2xl px-5 py-3.5 text-sm text-[oklch(0.38_0.07_259.56)] font-semibold outline-none focus:bg-white focus:border-blue-400 focus:ring-4 focus:ring-blue-400/5 transition-all duration-300" value={companyName} onChange={e => setCompanyName(e.target.value)} />
@@ -157,18 +150,11 @@ const AdminCompanyAdmin = ({ isSuperAdmin, isMapScriptLoaded, fetchGlobalCompany
               <input type="text" placeholder="숫자만 입력" className="w-full bg-slate-50/60 border border-slate-200/50 rounded-2xl px-5 py-3.5 text-sm text-[oklch(0.38_0.07_259.56)] font-medium font-mono outline-none focus:bg-white focus:border-blue-400 transition-all" value={faxNumber} onChange={e => setFaxNumber(e.target.value)} />
             </div>
 
-            {/* 주소 로케이터 검색 블록 */}
             <div className="md:col-span-2 space-y-1.5">
               <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">기본 본사 주소 *</label>
               <div className="flex gap-3">
                 <input type="text" readOnly placeholder="주소 검색 버튼을 클릭하세요" className="flex-1 bg-slate-100/50 border border-slate-200/30 rounded-2xl px-5 py-3.5 text-sm text-[oklch(0.38_0.07_259.56)] font-medium outline-none select-none" value={address} />
-                <button 
-                  type="button"
-                  onClick={handleAddressSearch} 
-                  className="px-5 bg-slate-900 text-white hover:bg-blue-400 rounded-2xl text-xs font-bold transition-all duration-200 active:scale-95 cursor-pointer shadow-sm"
-                >
-                  주소 검색
-                </button>
+                <button type="button" onClick={handleAddressSearch} className="px-5 bg-slate-900 text-white hover:bg-blue-400 rounded-2xl text-xs font-bold transition-all duration-200 active:scale-95 cursor-pointer shadow-sm">주소 검색</button>
               </div>
             </div>
 
@@ -177,30 +163,22 @@ const AdminCompanyAdmin = ({ isSuperAdmin, isMapScriptLoaded, fetchGlobalCompany
               <input type="text" placeholder="나머지 상세 건물명 및 호수를 기입하세요" className="w-full bg-slate-50/60 border border-slate-200/50 rounded-2xl px-5 py-3.5 text-sm text-[oklch(0.38_0.07_259.56)] font-medium outline-none focus:bg-white focus:border-blue-400 transition-all" value={addressDetail} onChange={e => setAddressDetail(e.target.value)} />
             </div>
 
-            {/* 🗺️ 카카오맵 컨테이너 테두리 라운딩 스무딩 처리 */}
             <div className="md:col-span-2 pt-2 space-y-1.5">
               <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">지도 위치 동기화 프리뷰</label>
               <div className="rounded-2xl overflow-hidden border border-slate-200/60 p-1 bg-slate-50 shadow-inner">
                 <div id="admin-map" className="w-full h-64 bg-slate-100 rounded-xl relative z-10" />
               </div>
             </div>
-
           </div>
 
-          {/* 하단 최종 제출 바 구역: 테마에 맞는 bg-blue-400 및 은은한 가우시안 글로우그림자 연동 */}
           <div className="flex justify-end border-t border-slate-100/60 pt-5">
-            <button 
-              onClick={handleSaveCompanyInfo} 
-              className="bg-blue-400 hover:bg-blue-500 text-white px-8 py-3.5 rounded-2xl font-bold text-xs shadow-lg shadow-blue-400/20 transition-all active:scale-95 cursor-pointer"
-            >
+            <button onClick={handleSaveCompanyInfo} className="bg-blue-400 hover:bg-blue-500 text-white px-8 py-3.5 rounded-2xl font-bold text-xs shadow-lg shadow-blue-400/20 transition-all active:scale-95 cursor-pointer">
               회사 정보 수정하기
             </button>
           </div>
-
         </div>
       </div>
 
-      {/* 🚨 최고 관리자 전용 디버그 체크 패널 정밀 리스킨 (소프트 블러 투명 스퀘어 수용) */}
       {isSuperAdmin && showDebugPanel && (
         <div className="w-80 bg-slate-900/95 backdrop-blur-xl text-slate-100 h-screen fixed top-0 right-0 p-6 flex flex-col justify-between z-[150] shadow-[0_0_50px_rgba(0,0,0,0.15)] border-l border-slate-800 animate-fadeIn">
           <div className="space-y-5">
@@ -227,10 +205,7 @@ const AdminCompanyAdmin = ({ isSuperAdmin, isMapScriptLoaded, fetchGlobalCompany
             </div>
           </div>
           
-          <button 
-            onClick={() => setShowDebugPanel(false)} 
-            className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 text-xs rounded-xl font-bold transition cursor-pointer"
-          >
+          <button onClick={() => setShowDebugPanel(false)} className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 text-xs rounded-xl font-bold transition cursor-pointer">
             대시보드 패널 닫기
           </button>
         </div>
