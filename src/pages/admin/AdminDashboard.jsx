@@ -41,25 +41,29 @@ const AdminDashboard = ({
     policies: '정책 관리'
   };
 
-  // 🚀 모바일 전용 초고속 사진/글 업로드 API 호출 함수
+  // 🚀 모바일 전용 초고속 사진/글 업로드 API 호출 함수 (백엔드 스펙 매칭 완료)
   const handleMobileUpload = async ({ file, content }) => {
     try {
       const formData = new FormData();
-      if (file) formData.append('image', file, file.name || 'mobile-upload.jpg');
-      
-      formData.append('content', content);
-      
-      const title = content.length > 15 ? content.substring(0, 15) + '...' : content || '모바일 업로드';
+
+      // 1. 텍스트 데이터 셋팅
+      const title = content.length > 15 ? content.substring(0, 15) + '...' : content || '모바일 포트폴리오';
       formData.append('title', title);
+      formData.append('content', content || ''); 
       formData.append('category', activeTab || 'portfolio');
 
-      // 🔑 api 인스턴스 사용 (Authorization 헤더 자동 주입)
+      // 2. 파일 데이터 셋팅 
+      // 🚨 백엔드 FilesInterceptor('files') 스펙에 맞추어 키 이름을 반드시 'files'로 지정해야 합니다.
+      if (file) {
+        formData.append('files', file, file.name || 'mobile-media.jpg');
+      }
+
+      // 3. 백엔드 /posts 로 한 번에 전송 (multipart/form-data)
       await api.post('/posts', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
       alert('포트폴리오가 성공적으로 업로드되었습니다! 🎉');
-      
       if (fetchPosts) fetchPosts(); 
     } catch (error) {
       console.error('포트폴리오 모바일 업로드 실패:', error);
