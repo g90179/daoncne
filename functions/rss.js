@@ -1,20 +1,15 @@
-// daon-frontend/functions/rss.js
 export async function onRequest(context) {
-  // 사용자가 /rss로 요청한 객체
-  const { request } = context;
-  
-  // 목적지 백엔드 주소
   const targetUrl = "https://g90179.gabia.io/rss";
   
-  // Host 헤더를 백엔드 도메인으로 변조 (가비아 404 차단 우회)
-  const newHeaders = new Headers(request.headers);
-  newHeaders.set("Host", "g90179.gabia.io");
-  
-  // 변조된 헤더를 담아 백엔드로 새 요청 전송
-  const newRequest = new Request(targetUrl, {
-    method: request.method,
-    headers: newHeaders,
+  // 기존 브라우저 헤더를 복사하지 않고, 가비아가 요구하는 핵심 헤더만 깔끔하게 생성
+  const cleanRequest = new Request(targetUrl, {
+    method: "GET",
+    headers: {
+      "Host": "g90179.gabia.io", // 나는 가비아 도메인이다 (변조)
+      "Accept": "application/rss+xml, application/xml, text/xml, */*"
+    }
   });
   
-  return fetch(newRequest);
+  // 백엔드로 요청 전송
+  return fetch(cleanRequest);
 }
