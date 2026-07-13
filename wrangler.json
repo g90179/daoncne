@@ -2,8 +2,7 @@
   "name": "daoncne",
   "compatibility_date": "2026-07-02",
   "assets": {
-    "directory": "./dist",
-    "fallback_document": "index.html" 
+    "directory": "./dist"
   },
   "workers_dev": false,
   "routes": [
