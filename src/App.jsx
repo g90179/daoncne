@@ -1,7 +1,7 @@
 // daon-frontend/src/App.jsx
 import React, { useState, useEffect } from 'react';
 // 🔑 실서버 404를 원천 차단하는 BrowserRouter 규격을 유지합니다.
-import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import api from './api/axios'; // 🔑 통합된 API 모듈 불러오기 (인터셉터 및 Refresh 로직 내장)
 import Layout from './components/Layout';
 import HomeView from './components/HomeView';
@@ -98,8 +98,8 @@ function App() {
       setIsLoggedIn(true);
       setShowLoginModal(false);
       
-      // 로그인 성공 시 관리자 페이지로 이동
-      window.location.href = '/#/admDashboard'; 
+      // ✅ 수정됨: Hash(#) 라우터 방식이 아니므로 /admDashboard 로 바로 이동합니다.
+      window.location.href = '/admDashboard'; 
     } catch (e) { alert('로그인 정보가 틀렸습니다.'); }
   };
   
@@ -110,7 +110,7 @@ function App() {
   };
 
   return (
-    <BrowserRouter>
+    <>
       <AdminAuthManager 
         showLoginModal={showLoginModal}
         setShowLoginModal={setShowLoginModal}
@@ -159,7 +159,7 @@ function App() {
           } 
         />
       </Routes>
-    </BrowserRouter>
+    </>
   );
 }
 
