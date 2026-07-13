@@ -15,7 +15,6 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
   const [passwordInput, setPasswordInput] = useState('');
   const [pendingQuoteId, setPendingQuoteId] = useState(null);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [editFormData, setEditFormData] = useState({ title: '', content: '' });
 
   const [serverTid, setServerTid] = useState('');
   const [captchaInfo, setCaptchaInfo] = useState({ question: '', cid: '' });
@@ -109,18 +108,6 @@ const QuoteBoard = ({ initialTab = 'list', isLoggedIn = false }) => {
       fetchQuotes();
     } catch (err) {
       alert('삭제 권한이 없거나 비밀번호가 틀렸습니다.');
-    }
-  };
-
-  const handleUpdateSubmit = async () => {
-    try {
-      await api.put(`/quotes/${selectedQuote.id}`, { ...editFormData, password: passwordInput });
-      alert('문의 내용이 수정되었습니다.');
-      setIsEditMode(false);
-      const res = await api.get(`/quotes/${selectedQuote.id}`);
-      setSelectedQuote(res.data);
-    } catch (err) {
-      alert('수정에 실패했습니다. 비밀번호를 다시 확인해 주세요.');
     }
   };
 
