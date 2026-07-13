@@ -1,7 +1,7 @@
 // daon-frontend/src/App.jsx
 import React, { useState, useEffect } from 'react';
-// 🔑 실서버 404를 원천 차단하는 HashRouter 규격을 유지합니다.
-import { HashRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+// 🔑 실서버 404를 원천 차단하는 BrowserRouter 규격을 유지합니다.
+import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import api from './api/axios'; // 🔑 통합된 API 모듈 불러오기 (인터셉터 및 Refresh 로직 내장)
 import Layout from './components/Layout';
 import HomeView from './components/HomeView';
@@ -110,7 +110,7 @@ function App() {
   };
 
   return (
-    <HashRouter>
+    <BrowserRouter>
       <AdminAuthManager 
         showLoginModal={showLoginModal}
         setShowLoginModal={setShowLoginModal}
@@ -159,7 +159,7 @@ function App() {
           } 
         />
       </Routes>
-    </HashRouter>
+    </BrowserRouter>
   );
 }
 
