@@ -9,6 +9,7 @@ import QuoteBoard from './pages/QuoteBoard';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ForgotPassword from './pages/admin/ForgotPassword'; 
 import ResetPassword from './pages/admin/ResetPassword';
+import PortfolioDetail from './pages/PortfolioDetail'; // 포트폴리오
 import { 
   PolicyView, 
   PolicyHistoryList, 
@@ -140,6 +141,8 @@ function App() {
           <Route path="/company" element={<Company />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          {/* ✅ 여기에 동적 라우팅 추가 ( :id 부분이 게시글 번호로 자동 매칭됩니다 ) */}
+          <Route path="/portfolio/:id" element={<PortfolioDetail />} />
         </Route>
 
         <Route 
