@@ -1,6 +1,6 @@
 // daon-frontend/src/components/AdminPostEditor.jsx
 import React, { useState, useEffect } from 'react';
-import api from '../api/axios'; // 🔑 표준 api 인스턴스 사용
+import api from '../api/axios';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import {
   ClassicEditor,
@@ -35,6 +35,14 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
   const [existingFiles, setExistingFiles] = useState([]);
   const [deletedFileIds, setDeletedFileIds] = useState([]);
 
+  // ✨ [신규] 의뢰업체명 / 작업지 주소 / 키워드
+  const [clientName, setClientName] = useState('');
+  const [workAddress, setWorkAddress] = useState('');
+  const [workLat, setWorkLat] = useState(null);
+  const [workLng, setWorkLng] = useState(null);
+  const [keywords, setKeywords] = useState([]);
+  const [keywordInput, setKeywordInput] = useState('');
+
   useEffect(() => {
     if (editingPost) {
       setTitle(editingPost.title);
@@ -43,8 +51,18 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
       setSelectedFiles([]);
       setExistingFiles(editingPost.files?.filter(f => f.name !== 'editor_thumbnail') || []);
       setDeletedFileIds([]);
+
+      // ✨ [신규] 기존 값 로드
+      setClientName(editingPost.clientName || '');
+      setWorkAddress(editingPost.workAddress || '');
+      setWorkLat(editingPost.workLat ?? null);
+      setWorkLng(editingPost.workLng ?? null);
+      setKeywords(editingPost.keywords?.map(pk => pk.keyword?.name).filter(Boolean) || []);
+      setKeywordInput('');
     } else {
       setTitle(''); setContent(''); setSelectedFiles([]); setExistingFiles([]); setDeletedFileIds([]);
+      setClientName(''); setWorkAddress(''); setWorkLat(null); setWorkLng(null);
+      setKeywords([]); setKeywordInput('');
     }
   }, [editingPost]);
 
@@ -55,18 +73,88 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
     setDeletedFileIds(prev => [...prev, fileId]);
   };
 
+  // ✨ [신규] 다음 우편번호 팝업 → 주소 선택 → 카카오 Geocoder로 좌표 변환
+  const handleAddressSearch = () => {
+    if (!window.daum || !window.daum.Postcode) {
+      alert('주소 검색 스크립트를 아직 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
+    new window.daum.Postcode({
+      oncomplete: (data) => {
+        const fullAddress = data.roadAddress || data.jibunAddress || data.address;
+        setWorkAddress(fullAddress);
+
+        if (window.kakao?.maps?.services) {
+          const geocoder = new window.kakao.maps.services.Geocoder();
+          geocoder.addressSearch(fullAddress, (result, status) => {
+            if (status === window.kakao.maps.services.Status.OK && result[0]) {
+              setWorkLat(parseFloat(result[0].y));
+              setWorkLng(parseFloat(result[0].x));
+            } else {
+              setWorkLat(null);
+              setWorkLng(null);
+              console.warn('주소 좌표 변환 실패:', fullAddress);
+            }
+          });
+        }
+      }
+    }).open();
+  };
+
+  const handleClearAddress = () => {
+    setWorkAddress('');
+    setWorkLat(null);
+    setWorkLng(null);
+  };
+
+  // ✨ [신규] 키워드 추가 (Enter 또는 쉼표로 구분)
+  const handleKeywordInputKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      addKeywordFromInput();
+    } else if (e.key === 'Backspace' && !keywordInput && keywords.length > 0) {
+      // 입력값이 비었을 때 백스페이스로 마지막 태그 삭제
+      setKeywords(prev => prev.slice(0, -1));
+    }
+  };
+
+  const addKeywordFromInput = () => {
+    const trimmed = keywordInput.trim().replace(/^#/, '');
+    if (!trimmed) return;
+    if (!keywords.includes(trimmed)) {
+      setKeywords(prev => [...prev, trimmed]);
+    }
+    setKeywordInput('');
+  };
+
+  const handleRemoveKeyword = (name) => {
+    setKeywords(prev => prev.filter(k => k !== name));
+  };
+
   const handleSubmit = async () => {
     if (!title.trim()) { alert('제목을 입력해주세요.'); return; }
+
+    // 입력창에 남아있는데 아직 태그로 확정 안 된 키워드도 저장 시 함께 반영
+    const finalKeywords = keywordInput.trim()
+      ? [...keywords, keywordInput.trim().replace(/^#/, '')]
+      : keywords;
     
     const formData = new FormData();
     formData.append('title', title);
     formData.append('content', content);
     formData.append('category', category);
     formData.append('deletedFileIds', JSON.stringify(deletedFileIds));
+
+    // ✨ [신규] 필수 아님 — 값이 있을 때만 의미 있게 전송
+    formData.append('clientName', clientName);
+    formData.append('workAddress', workAddress);
+    if (workLat != null) formData.append('workLat', String(workLat));
+    if (workLng != null) formData.append('workLng', String(workLng));
+    formData.append('keywords', JSON.stringify(finalKeywords));
+
     selectedFiles.forEach(f => formData.append('files', f));
 
     try {
-      // 🔑 api 인스턴스를 사용하여 토큰 자동 주입 및 요청 발송
       if (editingPost) {
         await api.patch(`/posts/${editingPost.id}`, formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
@@ -124,6 +212,76 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
           value={title} 
           onChange={e => setTitle(e.target.value)} 
         />
+      </div>
+
+      {/* ✨ [신규] 의뢰업체명 / 작업지 주소 / 작업 키워드 — 전부 선택 입력 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-1">
+        <div className="space-y-1.5">
+          <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">의뢰업체명 <span className="normal-case font-medium text-slate-300">(선택)</span></label>
+          <input
+            className="w-full bg-slate-50/60 border border-slate-200/50 rounded-2xl px-5 py-3 text-sm outline-none focus:bg-white focus:border-blue-400 transition"
+            placeholder="예: 다온씨엔이"
+            value={clientName}
+            onChange={e => setClientName(e.target.value)}
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">작업지 주소 <span className="normal-case font-medium text-slate-300">(선택)</span></label>
+          <div className="flex gap-2">
+            <input
+              className="flex-1 bg-slate-50/60 border border-slate-200/50 rounded-2xl px-5 py-3 text-sm outline-none focus:bg-white focus:border-blue-400 transition"
+              placeholder="주소 검색 버튼을 눌러주세요"
+              value={workAddress}
+              readOnly
+            />
+            <button
+              type="button"
+              onClick={handleAddressSearch}
+              className="shrink-0 bg-slate-900 hover:bg-blue-500 text-white text-xs font-bold px-4 py-3 rounded-2xl transition cursor-pointer"
+            >
+              주소 검색
+            </button>
+            {workAddress && (
+              <button
+                type="button"
+                onClick={handleClearAddress}
+                className="shrink-0 bg-slate-100 hover:bg-rose-50 hover:text-rose-500 text-slate-400 text-xs font-bold px-3 py-3 rounded-2xl transition cursor-pointer"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          {workLat != null && workLng != null && (
+            <p className="text-[10px] text-blue-400 font-mono pl-1">📍 {workLat.toFixed(6)}, {workLng.toFixed(6)}</p>
+          )}
+        </div>
+      </div>
+
+      <div className="px-1 space-y-1.5">
+        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">작업 키워드 <span className="normal-case font-medium text-slate-300">(선택 · 복수 등록 가능)</span></label>
+        <div className="flex flex-wrap items-center gap-2 bg-slate-50/60 border border-slate-200/50 rounded-2xl px-4 py-3 focus-within:bg-white focus-within:border-blue-400 transition">
+          {keywords.map((kw) => (
+            <span key={kw} className="flex items-center gap-1.5 bg-blue-50 text-blue-500 text-xs font-bold pl-3 pr-2 py-1.5 rounded-full border border-blue-100">
+              #{kw}
+              <button
+                type="button"
+                onClick={() => handleRemoveKeyword(kw)}
+                className="w-4 h-4 rounded-full bg-white/70 hover:bg-rose-50 hover:text-rose-500 flex items-center justify-center text-[10px] font-black transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </span>
+          ))}
+          <input
+            className="flex-1 min-w-[120px] bg-transparent text-sm outline-none py-1"
+            placeholder={keywords.length === 0 ? '키워드 입력 후 Enter (예: 크레인이동)' : '키워드 추가...'}
+            value={keywordInput}
+            onChange={e => setKeywordInput(e.target.value)}
+            onKeyDown={handleKeywordInputKeyDown}
+            onBlur={addKeywordFromInput}
+          />
+        </div>
       </div>
 
       <div className="min-h-[480px] rounded-2xl overflow-hidden border border-slate-200/50 bg-slate-50/40 focus-within:bg-white focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-400/5 transition-all duration-300 ckeditor-custom-wrapper">
