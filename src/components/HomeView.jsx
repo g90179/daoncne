@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react'; 
 import { useLocation, useNavigate } from 'react-router-dom'; 
 import MainVideoBanner from './MainVideoBanner'; 
+import KoreaArchiveMap from './KoreaArchiveMap';
 import api from '../api/axios';
 import { API_URL } from '../config';
 
@@ -85,10 +86,13 @@ const HomeView = () => {
 
   return (
     <div className="w-full bg-white text-neutral-900 flex flex-col font-sans antialiased">
-      {/* 1. 메인 동적 비디오 배너 슬라이더 */}
+      {/* 메인 동적 비디오 배너 슬라이더 */}
       <MainVideoBanner />
 
-      {/* 2. 아카이브 섹션 */}
+      {/* ✨ [신규] 시공 현장 지도 */}
+      <KoreaArchiveMap posts={posts} />
+
+      {/* 아카이브 섹션 */}
       <section className="py-12 bg-white px-4 md:px-10 w-full scroll-mt-20" id="archive">
         <div className="w-full">
           
