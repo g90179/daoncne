@@ -34,6 +34,8 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [existingFiles, setExistingFiles] = useState([]);
   const [deletedFileIds, setDeletedFileIds] = useState([]);
+  const [workYear, setWorkYear] = useState('');
+  const [workMonth, setWorkMonth] = useState('');
 
   // ✨ [신규] 의뢰업체명 / 작업지 주소 / 키워드
   const [clientName, setClientName] = useState('');
@@ -58,11 +60,14 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
       setWorkLat(editingPost.workLat ?? null);
       setWorkLng(editingPost.workLng ?? null);
       setKeywords(editingPost.keywords?.map(pk => pk.keyword?.name).filter(Boolean) || []);
+      setWorkYear(editingPost.workYear != null ? String(editingPost.workYear) : '');
+      setWorkMonth(editingPost.workMonth != null ? String(editingPost.workMonth) : '');
       setKeywordInput('');
     } else {
       setTitle(''); setContent(''); setSelectedFiles([]); setExistingFiles([]); setDeletedFileIds([]);
       setClientName(''); setWorkAddress(''); setWorkLat(null); setWorkLng(null);
       setKeywords([]); setKeywordInput('');
+      setWorkYear(''); setWorkMonth('');
     }
   }, [editingPost]);
 
@@ -152,6 +157,9 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
     if (workLng != null) formData.append('workLng', String(workLng));
     formData.append('keywords', JSON.stringify(finalKeywords));
 
+    if (workYear) formData.append('workYear', workYear);
+    if (workMonth) formData.append('workMonth', workMonth);
+
     selectedFiles.forEach(f => formData.append('files', f));
 
     try {
@@ -226,7 +234,34 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
           />
         </div>
 
+        {/* ✨ [신규] 작업년도 / 작업월 */}
         <div className="space-y-1.5">
+          <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">작업년도/월 <span className="normal-case font-medium text-slate-300">(선택)</span></label>
+          <div className="flex items-center gap-2">
+            <select
+              className="flex-1 bg-slate-50/60 border border-slate-200/50 rounded-2xl px-4 py-3 text-sm outline-none focus:bg-white focus:border-blue-400 transition cursor-pointer"
+              value={workYear}
+              onChange={e => setWorkYear(e.target.value)}
+            >
+              <option value="">년도</option>
+              {Array.from({ length: 15 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                <option key={y} value={y}>{y}년</option>
+              ))}
+            </select>
+            <select
+              className="flex-1 bg-slate-50/60 border border-slate-200/50 rounded-2xl px-4 py-3 text-sm outline-none focus:bg-white focus:border-blue-400 transition cursor-pointer"
+              value={workMonth}
+              onChange={e => setWorkMonth(e.target.value)}
+            >
+              <option value="">월</option>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                <option key={m} value={m}>{m}월</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="space-y-1.5 md:col-span-2">
           <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">작업지 주소 <span className="normal-case font-medium text-slate-300">(선택)</span></label>
           <div className="flex gap-2">
             <input
