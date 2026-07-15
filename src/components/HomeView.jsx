@@ -1,28 +1,44 @@
 // daon-frontend/src/components/HomeView.jsx
-import React, { useState, useEffect } from 'react'; 
+import React, { useState, useEffect, useMemo } from 'react'; 
 import { useLocation, useNavigate } from 'react-router-dom'; 
 import MainVideoBanner from './MainVideoBanner'; 
+import api from '../api/axios';
 import { API_URL } from '../config';
 
-const HomeView = ({ 
-  posts, 
-  activeTab, 
-  setActiveTab
-}) => {
+const HomeView = () => {
   const location = useLocation();
-  const navigate = useNavigate(); // 🔑 라우터 이동을 위한 navigate 훅
-  
+  const navigate = useNavigate();
+
+  // ✨ [변경] 메인 아카이브는 "공사실적" 카테고리만, 자체적으로 fetch
+  const [posts, setPosts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   const [currentPage, setCurrentPage] = useState(1);
-  
-  // lg:grid-cols-4(4열) 환경에서 항상 정갈하게 3줄(3 rows)을 유지하기 위한 절대 기조 (4 * 3 = 12)
   const ITEMS_PER_PAGE = 12;
 
-  // 카테고리 탭 변경 감지 시 페이징 인덱스를 1페이지로 자동 회귀 조치
+  // ✨ [신규] 카테고리 탭 대신 해시태그 필터
+  const [selectedKeyword, setSelectedKeyword] = useState(null); // null = 전체
+
+  useEffect(() => {
+    const fetchArchivePosts = async () => {
+      setIsLoading(true);
+      try {
+        const res = await api.get('/posts?category=공사실적');
+        setPosts(Array.isArray(res.data) ? res.data : []);
+      } catch (e) {
+        console.error('공사실적 게시글 로드 실패:', e);
+        setPosts([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchArchivePosts();
+  }, []);
+
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeTab]);
+  }, [selectedKeyword]);
 
-  // 다른 페이지에서 해시(#archive)를 들고 들어오거나 posts가 바뀔 때 정확히 저격 스크롤
   useEffect(() => {
     if (location.hash === '#archive') {
       const timer = setTimeout(() => {
@@ -36,9 +52,36 @@ const HomeView = ({
     }
   }, [location.hash, posts]); 
 
-  // 페이징 슬라이싱 연산 기동
-  const totalPages = Math.ceil((posts || []).length / ITEMS_PER_PAGE);
-  const currentPosts = (posts || []).slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  // ✨ [신규] 게시글에서 키워드 이름 배열 추출하는 헬퍼
+  const getPostKeywords = (post) =>
+    (post.keywords || []).map(pk => pk.keyword?.name).filter(Boolean);
+
+  // ✨ [신규] 전체 게시글에서 등장하는 고유 키워드 목록 (빈도순 정렬)
+  const uniqueKeywords = useMemo(() => {
+    const countMap = new Map();
+    posts.forEach(post => {
+      getPostKeywords(post).forEach(name => {
+        countMap.set(name, (countMap.get(name) || 0) + 1);
+      });
+    });
+    return Array.from(countMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([name]) => name);
+  }, [posts]);
+
+  // ✨ [신규] 선택된 키워드로 게시글 필터링
+  const filteredPosts = useMemo(() => {
+    if (!selectedKeyword) return posts;
+    return posts.filter(post => getPostKeywords(post).includes(selectedKeyword));
+  }, [posts, selectedKeyword]);
+
+  const totalPages = Math.ceil(filteredPosts.length / ITEMS_PER_PAGE);
+  const currentPosts = filteredPosts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+  const handleKeywordClick = (keyword) => {
+    setSelectedKeyword(prev => (prev === keyword ? null : keyword)); // 같은 걸 다시 누르면 해제
+    document.getElementById('archive')?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   return (
     <div className="w-full bg-white text-neutral-900 flex flex-col font-sans antialiased">
@@ -50,26 +93,35 @@ const HomeView = ({
         <div className="w-full">
           
           <div className="flex flex-col items-center justify-center border-b border-neutral-200 pb-6 mb-12 gap-3 text-sm">
-            <div className="flex items-center gap-2 text-neutral-400 font-medium">
-              <span>Filter by:</span>
-              <span className="text-neutral-900 font-bold">{activeTab}</span>
-            </div>
             
-            <div className="flex flex-wrap justify-center gap-6 md:gap-8 font-medium">
-              {['전체', '현장사진', '공사실적', '보유장비'].map(tab => (
-                <button 
-                  key={tab} 
-                  onClick={() => setActiveTab(tab)} 
+            {/* ✨ [변경] 카테고리 탭 → 해시태그 탭 */}
+            {uniqueKeywords.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-6 md:gap-8 font-medium">
+                <button
+                  onClick={() => handleKeywordClick(null)}
                   className={`pb-1 transition-all relative cursor-pointer ${
-                    activeTab === tab 
-                      ? 'text-neutral-900 font-bold border-b-2 border-neutral-900' 
+                    !selectedKeyword
+                      ? 'text-neutral-900 font-bold border-b-2 border-neutral-900'
                       : 'text-neutral-400 hover:text-neutral-900'
                   }`}
                 >
-                  {tab}
+                  전체
                 </button>
-              ))}
-            </div>
+                {uniqueKeywords.map(keyword => (
+                  <button
+                    key={keyword}
+                    onClick={() => handleKeywordClick(keyword)}
+                    className={`pb-1 transition-all relative cursor-pointer ${
+                      selectedKeyword === keyword
+                        ? 'text-neutral-900 font-bold border-b-2 border-neutral-900'
+                        : 'text-neutral-400 hover:text-neutral-900'
+                    }`}
+                  >
+                    #{keyword}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           
           {/* 격자 그리드 */}
@@ -77,11 +129,11 @@ const HomeView = ({
             {currentPosts.map(post => {
               const imageFile = post.files?.find(f => f.type === 'image');
               const videoFile = post.files?.find(f => f.type === 'video' || f.url?.toLowerCase().endsWith('.mp4'));
+              const postKeywords = getPostKeywords(post);
 
               return (
                 <div 
                   key={post.id} 
-                  // 🔑 핵심 변경: 클릭 시 상세 페이지(PortfolioDetail) URL로 이동시킵니다.
                   onClick={() => { 
                     window.scrollTo(0,0); 
                     navigate(`/portfolio/${post.id}`); 
@@ -116,20 +168,43 @@ const HomeView = ({
                     )}
                   </div>
 
-                  <div className="text-left space-y-0.5 pt-1">
+                  <div className="text-left space-y-1.5 pt-1">
                     <h3 className="text-sm font-bold text-neutral-900 group-hover:underline underline-offset-4 decoration-neutral-900 transition-all duration-200 line-clamp-1">
                       {post.title}
                     </h3>
-                    <div className="text-xs text-neutral-400 font-medium tracking-wide">
-                      {post.category} — Daon CNE
-                    </div>
+
+                    {/* ✨ [변경] 카테고리 텍스트 → 해시태그 목록 (클릭 시 필터링) */}
+                    {postKeywords.length > 0 ? (
+                      <div className="flex flex-wrap gap-x-2 gap-y-1">
+                        {postKeywords.map(keyword => (
+                          <button
+                            key={keyword}
+                            onClick={(e) => {
+                              e.stopPropagation(); // 카드 클릭(상세 이동) 방지
+                              handleKeywordClick(keyword);
+                            }}
+                            className={`text-xs font-medium tracking-wide transition-colors cursor-pointer ${
+                              selectedKeyword === keyword
+                                ? 'text-blue-500 font-bold'
+                                : 'text-neutral-400 hover:text-blue-500'
+                            }`}
+                          >
+                            #{keyword}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-neutral-400 font-medium tracking-wide">
+                        Daon CNE
+                      </div>
+                    )}
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {posts.length === 0 && (
+          {!isLoading && filteredPosts.length === 0 && (
             <div className="w-full text-center py-32 border border-dashed border-neutral-200 mt-6">
               <p className="text-neutral-400 text-xs font-medium tracking-widest uppercase">No projects cataloged in this filter</p>
             </div>
