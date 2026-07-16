@@ -102,19 +102,6 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
   const navigate = useNavigate();
   const [openKey, setOpenKey] = useState(null);
 
-  // const containerRef = useRef(null);
-  // const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-
-  // useEffect(() => {
-  //   const el = containerRef.current;
-  //   if (!el) return;
-  //   const update = () => setContainerSize({ width: el.offsetWidth, height: el.offsetHeight });
-  //   update();
-  //   const ro = new ResizeObserver(update);
-  //   ro.observe(el);
-  //   return () => ro.disconnect();
-  // }, []);
-
   //  [수정] 콜백 Ref 패턴을 사용하여 지도가 실제로 화면에 나타나는 시점에 크기를 정확히 측정합니다.
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const resizeObserverRef = useRef(null);
@@ -154,14 +141,6 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
   const [savedPositionsLoaded, setSavedPositionsLoaded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // useEffect(() => {
-  //   let mounted = true;
-  //   api.get('/map-positions')
-  //     .then(res => { if (mounted) setSavedPositions(res.data || {}); })
-  //     .catch(() => {})
-  //     .finally(() => { if (mounted) setSavedPositionsLoaded(true); });
-  //   return () => { mounted = false; };
-  // }, []);
   // ✨ [수정] 백엔드에서 받아온 배열 데이터를 { '위치키': { xPct, yPct } } 객체 형태로 변환하여 저장합니다.
   useEffect(() => {
     let mounted = true;
@@ -459,7 +438,10 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
                       style={{ transform: `translate(${pos.x}px, ${pos.y}px) translate(-50%, -50%)` }}
                       onMouseDown={(e) => handleMouseDown(loc.key, e)}
                     >
-                      <div className="bg-neutral-900 text-white text-[11px] font-bold px-3 py-2 rounded-xl shadow-lg max-w-[180px] text-center leading-snug select-none">
+                      <div className="bg-[#49c1ea] text-white text-[11px] font-bold px-3 py-2 rounded-sm shadow-lg max-w-[180px] text-center leading-snug select-none"
+                      style={
+                        {wordBreak : 'auto-phrase'}
+                      }>
                         {loc.posts[0]?.title}
                         {loc.posts.length > 1 && (
                           <span className="block text-[10px] text-neutral-300 font-medium mt-0.5">외 {loc.posts.length - 1}건</span>
@@ -472,7 +454,7 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
             );
           })}
 
-          <div className="absolute top-3 right-3 w-[30%] aspect-square bg-blue-50/40 border border-dashed border-blue-200 rounded-xl overflow-visible">
+          <div className="absolute top-3 right-0 w-[20%] h-[70px] bg-blue-50/40 border border-dashed border-blue-200 rounded-xl overflow-visible">
             <span className="absolute -top-2 left-1.5 bg-[#fcfcfc] px-1 text-[9px] font-bold text-neutral-400 whitespace-nowrap">
               울릉도·독도
             </span>
