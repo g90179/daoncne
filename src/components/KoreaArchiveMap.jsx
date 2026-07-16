@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
+import { API_URL } from '../config'; // ✨ [추가] API_URL 임포트
 import koreaMapSrc from '../assets/Map_of_South_Korea-blank.svg';
 
 const LAT_MAX = 38.9;
@@ -29,7 +30,7 @@ const projectToInsetPercent = (lat, lng) => ({
   topPct: ((INSET_LAT_MAX - lat) / (INSET_LAT_MAX - INSET_LAT_MIN)) * 100,
 });
 
-// 말풍선간 간력
+// 말풍선간 간격
 const MIN_ANGLE_GAP = 0.10;
 
 const distributeAngles = (items) => {
@@ -53,6 +54,16 @@ const distributeAngles = (items) => {
     if (!moved) break;
   }
   return arr;
+};
+
+// ✨ [신규] HomeView 방식대로 files 배열에서 이미지 추출 및 API_URL 결합
+const getThumbnailUrl = (post) => {
+  if (!post) return null;
+  const imageFile = post.files?.find(f => f.type === 'image');
+  if (imageFile && imageFile.url) {
+    return `${API_URL}${imageFile.url}`;
+  }
+  return null;
 };
 
 const MarkerButton = ({ count, onClick, compact = false }) => (
@@ -85,15 +96,26 @@ const LocationListPanel = ({ loc, navigate }) => (
       </p>
     )}
     <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
-      {loc.posts.map(post => (
-        <button
-          key={post.id}
-          onClick={() => navigate(`/portfolio/${post.id}`)}
-          className="w-full text-left text-xs font-semibold text-neutral-700 hover:text-[#2bb4e8] px-2 py-2 rounded-lg hover:bg-blue-50 transition truncate cursor-pointer"
-        >
-          {post.title}
-        </button>
-      ))}
+      {loc.posts.map(post => {
+        const thumbUrl = getThumbnailUrl(post); // ✨ 썸네일 URL 추출
+        return (
+          <button
+            key={post.id}
+            onClick={() => navigate(`/portfolio/${post.id}`)}
+            className="w-full flex items-center gap-2 text-left text-xs font-semibold text-neutral-700 hover:text-[#2bb4e8] p-1.5 rounded-lg hover:bg-blue-50 transition cursor-pointer"
+          >
+            {/* ✨ 썸네일 이미지 렌더링 */}
+            {thumbUrl && (
+              <img 
+                src={thumbUrl} 
+                alt={post.title} 
+                className="w-8 h-8 object-cover rounded-md flex-shrink-0 bg-neutral-100"
+              />
+            )}
+            <span className="truncate flex-1">{post.title}</span>
+          </button>
+        );
+      })}
     </div>
   </div>
 );
@@ -102,18 +124,15 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
   const navigate = useNavigate();
   const [openKey, setOpenKey] = useState(null);
 
-  //  [수정] 콜백 Ref 패턴을 사용하여 지도가 실제로 화면에 나타나는 시점에 크기를 정확히 측정합니다.
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const resizeObserverRef = useRef(null);
 
   const containerRef = useCallback((node) => {
-    // 1. 기존에 등록된 감시자가 있다면 해제 (메모리 누수 방지)
     if (resizeObserverRef.current) {
       resizeObserverRef.current.disconnect();
       resizeObserverRef.current = null;
     }
 
-    // 2. 실제로 지도가 DOM에 렌더링되어 node가 존재할 때만 실행
     if (node !== null) {
       const update = () => {
         setContainerSize({
@@ -121,11 +140,7 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
           height: node.offsetHeight,
         });
       };
-
-      // 마운트되는 즉시 크기 측정
       update();
-
-      // 이후 크기 변화 실시간 감시
       const ro = new ResizeObserver(update);
       ro.observe(node);
       resizeObserverRef.current = ro;
@@ -136,12 +151,10 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
   const [draggingKey, setDraggingKey] = useState(null);
   const draggingRef = useRef({ key: null, startX: 0, startY: 0, initialX: 0, initialY: 0 });
 
-  // ✨ [신규] 관리자가 저장해둔 위치 (전역 공통 초기값)
   const [savedPositions, setSavedPositions] = useState({});
   const [savedPositionsLoaded, setSavedPositionsLoaded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // ✨ [수정] 백엔드에서 받아온 배열 데이터를 { '위치키': { xPct, yPct } } 객체 형태로 변환하여 저장합니다.
   useEffect(() => {
     let mounted = true;
     api.get('/map-positions')
@@ -152,18 +165,14 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
           
           if (Array.isArray(rawData)) {
             rawData.forEach(item => {
-              // 백엔드 필드명이 xPct/yPct 인지, offsetXPct/offsetYPct 인지에 상관없이 유연하게 매핑합니다.
               positionMap[item.locationKey] = {
                 xPct: item.xPct !== undefined ? item.xPct : item.offsetXPct,
                 yPct: item.yPct !== undefined ? item.yPct : item.offsetYPct,
               };
             });
           } else {
-            // 이미 객체 형태로 내려왔다면 그대로 할당
             Object.assign(positionMap, rawData);
           }
-          
-          console.log('📍 로드된 말풍선 위치 Map:', positionMap);
           setSavedPositions(positionMap);
         }
       })
@@ -208,7 +217,6 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
     y: (loc.topPct / 100) * containerSize.height,
   }), [containerSize]);
 
-  // ✨ 저장된 위치가 로드된 후: 저장된 위치 우선 적용, 없는 마커만 자동으로 지도를 둘러싸는 위치에 배치
   useEffect(() => {
     if (!savedPositionsLoaded) return;
     if (!containerSize.width || !containerSize.height || mainLocations.length === 0) return;
@@ -224,7 +232,7 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
       const needsAutoPlacement = [];
 
       mainLocations.forEach(loc => {
-        if (next[loc.key]) return; // 이미 배치됨(드래그 중 위치 포함)
+        if (next[loc.key]) return;
 
         const saved = savedPositions[loc.key];
         if (saved) {
@@ -310,44 +318,28 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
     window.removeEventListener('mouseup', handleMouseUp);
   };
 
-  // ✨ [신규] 관리자: 현재 말풍선 위치를 전역 기본값으로 저장
   const handleSavePositions = async () => {
-    console.log('=== 📍 [말풍선 위치 저장 프로세스 시작] ===');
-    console.log('1. 지도 컨테이너 크기:', containerSize);
-    
     if (!containerSize.width || !containerSize.height) {
-      console.warn('⚠️ 지도 컨테이너의 가로/세로 크기가 확인되지 않아 저장을 중단합니다.');
       alert('지도 크기가 계산되지 않았습니다. 새로고침 후 다시 시도해 주세요.');
       return;
     }
-
-    console.log('2. 현재 렌더링된 모든 말풍선 좌표 상태(tooltipPositions):', tooltipPositions);
 
     const payload = mainLocations
       .filter(loc => tooltipPositions[loc.key])
       .map(loc => ({
         locationKey: loc.key,
-        // ⚠️ 백엔드 DB 컬럼명 혹은 DTO(데이터 전송 객체)의 필드명과 일치하는지 확인하세요!
         offsetXPct: (tooltipPositions[loc.key].x / containerSize.width) * 100,
         offsetYPct: (tooltipPositions[loc.key].y / containerSize.height) * 100,
       }));
 
-    console.log('3. 최종 전송할 데이터(payload):', payload);
-
     if (payload.length === 0) {
-      console.warn('⚠️ 전송할 위치 데이터가 비어 있습니다. tooltipPositions가 채워졌는지 확인하세요.');
       alert('저장할 말풍선 위치 정보가 존재하지 않습니다. 말풍선을 조금 드래그한 후 시도해 보세요.');
       return;
     }
 
     setIsSaving(true);
     try {
-      // ⚠️ 백엔드 설계에 따라 payload 배열을 감싸서 보낼지, 그냥 보낼지 확인해야 합니다.
-      // 1) 객체로 감싸서 보내는 경우: { positions: payload }
-      // 2) 배열 그대로 보내는 경우: payload
       const response = await api.put('/map-positions', { positions: payload });
-      console.log('4. 백엔드 API 응답 결과 성공:', response.data);
-
       setSavedPositions(prev => {
         const next = { ...prev };
         payload.forEach(p => { 
@@ -357,11 +349,9 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
       });
       alert('말풍선 위치가 성공적으로 저장되었습니다!');
     } catch (err) {
-      console.error('❌ API 요청 실패 에러 상세:', err);
       alert(`저장에 실패했습니다. 원인: ${err.response?.data?.message || err.message}`);
     } finally {
       setIsSaving(false);
-      console.log('=== 📍 [말풍선 위치 저장 프로세스 종료] ===');
     }
   };
 
@@ -389,7 +379,6 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
             전국 곳곳에서 진행된 프로젝트 위치를 확인해보세요. 말풍선은 드래그로 옮길 수 있어요.
           </p>
 
-          {/* ✨ [신규] 관리자 전용 저장 버튼 */}
           {isLoggedIn && (
             <button
               onClick={handleSavePositions}
@@ -413,6 +402,7 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
             const isOpen = openKey === loc.key;
             const pos = tooltipPositions[loc.key] || { x: 0, y: -60 };
             const isDraggingThis = draggingKey === loc.key;
+            const thumbUrl = getThumbnailUrl(loc.posts[0]); // ✨ 썸네일 URL 추출
 
             return (
               <React.Fragment key={loc.key}>
@@ -438,14 +428,27 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
                       style={{ transform: `translate(${pos.x}px, ${pos.y}px) translate(-50%, -50%)` }}
                       onMouseDown={(e) => handleMouseDown(loc.key, e)}
                     >
-                      <div className="bg-[#49c1ea] text-white text-[11px] font-bold px-3 py-2 rounded-sm shadow-lg max-w-[180px] text-center leading-snug select-none"
+                      <div className="bg-[#fffffff5] p-2 border border-neutral-200/70 rounded-sm shadow-lg max-w-[200px] flex items-center gap-2 select-none"
                       style={
                         {wordBreak : 'auto-phrase'}
                       }>
-                        {loc.posts[0]?.title}
-                        {loc.posts.length > 1 && (
-                          <span className="block text-[10px] text-neutral-300 font-medium mt-0.5">외 {loc.posts.length - 1}건</span>
+                        {/* ✨ 썸네일 이미지 렌더링 */}
+                        {thumbUrl && (
+                          <img 
+                            src={thumbUrl} 
+                            alt="" 
+                            className="w-8 h-8 object-cover rounded-md flex-shrink-0 bg-white/20"
+                          />
                         )}
+                        
+                        <div className="flex flex-col items-start text-left flex-1 min-w-0">
+                          <div className="text-[11px] font-bold truncate w-full leading-snug">
+                            {loc.posts[0]?.title}
+                          </div>
+                          {loc.posts.length > 1 && (
+                            <span className="block text-[10px] text-white/80 font-medium mt-0.5">외 {loc.posts.length - 1}건</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -463,6 +466,8 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
 
             {insetLocations.map(loc => {
               const isOpen = openKey === loc.key;
+              const thumbUrl = getThumbnailUrl(loc.posts[0]); // ✨ 썸네일 URL 추출
+
               return (
                 <div
                   key={loc.key}
@@ -471,11 +476,24 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
                 >
                   {!isOpen && (
                     <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-150 z-30">
-                      <div className="bg-neutral-900 text-white text-[10px] font-bold px-2 py-1.5 rounded-lg shadow-lg max-w-[130px] text-center leading-snug">
-                        {loc.posts[0]?.title}
-                        {loc.posts.length > 1 && (
-                          <span className="block text-[9px] text-neutral-300 font-medium">외 {loc.posts.length - 1}건</span>
+                      <div className="bg-neutral-900 text-white p-1.5 rounded-lg shadow-lg max-w-[150px] flex items-center gap-1.5 select-none">
+                        {/* ✨ 썸네일 이미지 렌더링 */}
+                        {thumbUrl && (
+                          <img 
+                            src={thumbUrl} 
+                            alt="" 
+                            className="w-6 h-6 object-cover rounded-md flex-shrink-0 bg-neutral-800"
+                          />
                         )}
+
+                        <div className="flex flex-col items-start text-left flex-1 min-w-0">
+                          <div className="text-[10px] font-bold truncate w-full leading-snug">
+                            {loc.posts[0]?.title}
+                          </div>
+                          {loc.posts.length > 1 && (
+                            <span className="block text-[9px] text-neutral-300 font-medium">외 {loc.posts.length - 1}건</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
