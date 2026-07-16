@@ -129,7 +129,7 @@ function App() {
             setShowLoginModal={setShowLoginModal}
           />
         }>
-          <Route path="/" element={<HomeView />} />
+          <Route path="/" element={<HomeView isLoggedIn={isLoggedIn} />} />
           <Route path="/quotes" element={<QuoteBoard isLoggedIn={isLoggedIn} />} />
           <Route path="/policy" element={<PolicyView />} />
           <Route path="/policy/history" element={<PolicyHistoryList />} />

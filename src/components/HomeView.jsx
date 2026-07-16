@@ -6,7 +6,7 @@ import KoreaArchiveMap from './KoreaArchiveMap';
 import api from '../api/axios';
 import { API_URL } from '../config';
 
-const HomeView = () => {
+const HomeView = ({ isLoggedIn = false }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -90,7 +90,7 @@ const HomeView = () => {
       <MainVideoBanner />
 
       {/* ✨ [신규] 시공 현장 지도 */}
-      <KoreaArchiveMap posts={posts} />
+      <KoreaArchiveMap posts={posts} isLoggedIn={isLoggedIn} />
 
       {/* 아카이브 섹션 */}
       <section className="py-12 bg-white px-4 md:px-10 w-full scroll-mt-20" id="archive">
