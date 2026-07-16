@@ -29,7 +29,8 @@ const projectToInsetPercent = (lat, lng) => ({
   topPct: ((INSET_LAT_MAX - lat) / (INSET_LAT_MAX - INSET_LAT_MIN)) * 100,
 });
 
-const MIN_ANGLE_GAP = 0.32;
+// 말풍선간 간력
+const MIN_ANGLE_GAP = 0.10;
 
 const distributeAngles = (items) => {
   const arr = items.map(i => ({ ...i })).sort((a, b) => a.angle - b.angle);
@@ -101,17 +102,47 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
   const navigate = useNavigate();
   const [openKey, setOpenKey] = useState(null);
 
-  const containerRef = useRef(null);
-  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  // const containerRef = useRef(null);
+  // const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const update = () => setContainerSize({ width: el.offsetWidth, height: el.offsetHeight });
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
+  // useEffect(() => {
+  //   const el = containerRef.current;
+  //   if (!el) return;
+  //   const update = () => setContainerSize({ width: el.offsetWidth, height: el.offsetHeight });
+  //   update();
+  //   const ro = new ResizeObserver(update);
+  //   ro.observe(el);
+  //   return () => ro.disconnect();
+  // }, []);
+
+  //  [수정] 콜백 Ref 패턴을 사용하여 지도가 실제로 화면에 나타나는 시점에 크기를 정확히 측정합니다.
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const resizeObserverRef = useRef(null);
+
+  const containerRef = useCallback((node) => {
+    // 1. 기존에 등록된 감시자가 있다면 해제 (메모리 누수 방지)
+    if (resizeObserverRef.current) {
+      resizeObserverRef.current.disconnect();
+      resizeObserverRef.current = null;
+    }
+
+    // 2. 실제로 지도가 DOM에 렌더링되어 node가 존재할 때만 실행
+    if (node !== null) {
+      const update = () => {
+        setContainerSize({
+          width: node.offsetWidth,
+          height: node.offsetHeight,
+        });
+      };
+
+      // 마운트되는 즉시 크기 측정
+      update();
+
+      // 이후 크기 변화 실시간 감시
+      const ro = new ResizeObserver(update);
+      ro.observe(node);
+      resizeObserverRef.current = ro;
+    }
   }, []);
 
   const [tooltipPositions, setTooltipPositions] = useState({});
@@ -123,11 +154,43 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
   const [savedPositionsLoaded, setSavedPositionsLoaded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // useEffect(() => {
+  //   let mounted = true;
+  //   api.get('/map-positions')
+  //     .then(res => { if (mounted) setSavedPositions(res.data || {}); })
+  //     .catch(() => {})
+  //     .finally(() => { if (mounted) setSavedPositionsLoaded(true); });
+  //   return () => { mounted = false; };
+  // }, []);
+  // ✨ [수정] 백엔드에서 받아온 배열 데이터를 { '위치키': { xPct, yPct } } 객체 형태로 변환하여 저장합니다.
   useEffect(() => {
     let mounted = true;
     api.get('/map-positions')
-      .then(res => { if (mounted) setSavedPositions(res.data || {}); })
-      .catch(() => {})
+      .then(res => {
+        if (mounted) {
+          const rawData = res.data || [];
+          const positionMap = {};
+          
+          if (Array.isArray(rawData)) {
+            rawData.forEach(item => {
+              // 백엔드 필드명이 xPct/yPct 인지, offsetXPct/offsetYPct 인지에 상관없이 유연하게 매핑합니다.
+              positionMap[item.locationKey] = {
+                xPct: item.xPct !== undefined ? item.xPct : item.offsetXPct,
+                yPct: item.yPct !== undefined ? item.yPct : item.offsetYPct,
+              };
+            });
+          } else {
+            // 이미 객체 형태로 내려왔다면 그대로 할당
+            Object.assign(positionMap, rawData);
+          }
+          
+          console.log('📍 로드된 말풍선 위치 Map:', positionMap);
+          setSavedPositions(positionMap);
+        }
+      })
+      .catch((err) => {
+        console.error('❌ 지도 위치 데이터 로드 실패:', err);
+      })
       .finally(() => { if (mounted) setSavedPositionsLoaded(true); });
     return () => { mounted = false; };
   }, []);
@@ -270,30 +333,56 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
 
   // ✨ [신규] 관리자: 현재 말풍선 위치를 전역 기본값으로 저장
   const handleSavePositions = async () => {
-    if (!containerSize.width || !containerSize.height) return;
+    console.log('=== 📍 [말풍선 위치 저장 프로세스 시작] ===');
+    console.log('1. 지도 컨테이너 크기:', containerSize);
+    
+    if (!containerSize.width || !containerSize.height) {
+      console.warn('⚠️ 지도 컨테이너의 가로/세로 크기가 확인되지 않아 저장을 중단합니다.');
+      alert('지도 크기가 계산되지 않았습니다. 새로고침 후 다시 시도해 주세요.');
+      return;
+    }
+
+    console.log('2. 현재 렌더링된 모든 말풍선 좌표 상태(tooltipPositions):', tooltipPositions);
+
     const payload = mainLocations
       .filter(loc => tooltipPositions[loc.key])
       .map(loc => ({
         locationKey: loc.key,
+        // ⚠️ 백엔드 DB 컬럼명 혹은 DTO(데이터 전송 객체)의 필드명과 일치하는지 확인하세요!
         offsetXPct: (tooltipPositions[loc.key].x / containerSize.width) * 100,
         offsetYPct: (tooltipPositions[loc.key].y / containerSize.height) * 100,
       }));
 
-    if (payload.length === 0) return;
+    console.log('3. 최종 전송할 데이터(payload):', payload);
+
+    if (payload.length === 0) {
+      console.warn('⚠️ 전송할 위치 데이터가 비어 있습니다. tooltipPositions가 채워졌는지 확인하세요.');
+      alert('저장할 말풍선 위치 정보가 존재하지 않습니다. 말풍선을 조금 드래그한 후 시도해 보세요.');
+      return;
+    }
 
     setIsSaving(true);
     try {
-      await api.put('/map-positions', { positions: payload });
+      // ⚠️ 백엔드 설계에 따라 payload 배열을 감싸서 보낼지, 그냥 보낼지 확인해야 합니다.
+      // 1) 객체로 감싸서 보내는 경우: { positions: payload }
+      // 2) 배열 그대로 보내는 경우: payload
+      const response = await api.put('/map-positions', { positions: payload });
+      console.log('4. 백엔드 API 응답 결과 성공:', response.data);
+
       setSavedPositions(prev => {
         const next = { ...prev };
-        payload.forEach(p => { next[p.locationKey] = { xPct: p.offsetXPct, yPct: p.offsetYPct }; });
+        payload.forEach(p => { 
+          next[p.locationKey] = { xPct: p.offsetXPct, yPct: p.offsetYPct }; 
+        });
         return next;
       });
-      alert('말풍선 위치가 저장되었습니다. 이제 모든 방문자에게 이 위치가 기본으로 표시됩니다.');
+      alert('말풍선 위치가 성공적으로 저장되었습니다!');
     } catch (err) {
-      alert('저장에 실패했습니다.');
+      console.error('❌ API 요청 실패 에러 상세:', err);
+      alert(`저장에 실패했습니다. 원인: ${err.response?.data?.message || err.message}`);
     } finally {
       setIsSaving(false);
+      console.log('=== 📍 [말풍선 위치 저장 프로세스 종료] ===');
     }
   };
 
