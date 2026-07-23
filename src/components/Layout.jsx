@@ -14,7 +14,6 @@ const Layout = ({ companyInfo, isMapScriptLoaded, isLoggedIn, setAdminView, setS
         companyInfo={companyInfo} 
         isLoggedIn={isLoggedIn}
         setAdminView={setAdminView}
-        setShowLoginModal={setShowLoginModal}
       />
       
       {/* 메인이 아닐 때만 헤더 가림 방지 pt-24 자동 다이내믹 주입 */}
@@ -23,7 +22,12 @@ const Layout = ({ companyInfo, isMapScriptLoaded, isLoggedIn, setAdminView, setS
       </main>
       
       {/* 하단 푸터 프레임 */}
-      <Footer companyInfo={companyInfo} isMapScriptLoaded={isMapScriptLoaded} onQuoteClick={onQuoteClick} />
+      <Footer 
+        companyInfo={companyInfo} 
+        isMapScriptLoaded={isMapScriptLoaded} 
+        onQuoteClick={onQuoteClick} 
+        setShowLoginModal={setShowLoginModal}
+      />
     </div>
   );
 };

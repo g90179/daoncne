@@ -17,9 +17,37 @@ const formatBizNumber = (num) => {
   return cleaned.replace(/^(\d{3})(\d{2})(\d{5})$/, '$1-$2-$3');
 };
 
-const Footer = ({ companyInfo, isMapScriptLoaded }) => {
+// 🚀 isLoggedIn과 setShowLoginModal 프롭스를 추가로 받습니다.
+const Footer = ({ companyInfo, isMapScriptLoaded, isLoggedIn, setShowLoginModal }) => {
   const mapContainerRef = useRef(null);
   const hasCoords = !!(companyInfo?.lat && companyInfo?.lng);
+
+  // 🚀 [관리자 비밀 통로] 클릭 횟수 및 타이머 추적 (5초 내 7번 클릭 감지)
+  const secretClickCount = useRef(0);
+  const secretClickTimer = useRef(null);
+
+  const handleSecretClick = () => {
+    // 이미 로그인 상태면 작동 무시
+    if (isLoggedIn) return;
+
+    // 첫 번째 클릭일 때만 5초 타이머 시작 (5초 뒤에는 무조건 횟수 0으로 증발)
+    if (secretClickCount.current === 0) {
+      secretClickTimer.current = setTimeout(() => {
+        secretClickCount.current = 0;
+      }, 5000);
+    }
+
+    secretClickCount.current += 1;
+
+    // 제한 시간(5초) 안에 7번을 달성했다면?
+    if (secretClickCount.current >= 7) {
+      if (setShowLoginModal) setShowLoginModal(true); // 로그인 모달 오픈!
+      
+      // 성공했으므로 카운트와 타이머를 모두 깔끔하게 초기화
+      secretClickCount.current = 0;
+      clearTimeout(secretClickTimer.current); 
+    }
+  };
 
   useEffect(() => {
     if (!isMapScriptLoaded) return;
@@ -43,11 +71,18 @@ const Footer = ({ companyInfo, isMapScriptLoaded }) => {
 
   }, [isMapScriptLoaded, companyInfo?.lat, companyInfo?.lng, hasCoords]);
 
-  const InfoRow = ({ label, value }) => {
+  // 🚀 특정 라벨 클릭 시 이벤트를 받을 수 있도록 onLabelClick 프롭스 추가
+  const InfoRow = ({ label, value, onLabelClick }) => {
     if (!value) return null;
     return (
       <div className="flex gap-2 items-center">
-        <span className="text-neutral-400 shrink-0">{label}</span>
+        <span 
+          // 🔑 cursor-pointer 대신 cursor-default를 사용하여 마우스 커서가 변하지 않게 숨김 처리!
+          className={`text-neutral-400 shrink-0 ${onLabelClick ? 'cursor-default select-none' : ''}`}
+          onClick={onLabelClick}
+        >
+          {label}
+        </span>
         <div className="text-neutral-600 font-medium">{value}</div>
       </div>
     );
@@ -80,7 +115,13 @@ const Footer = ({ companyInfo, isMapScriptLoaded }) => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6 text-xs leading-relaxed">
               <InfoRow label="상호" value={companyInfo?.name} />
-              <InfoRow label="대표자" value={companyInfo?.ceo} />
+              
+              {/* 🚀 대표자 라벨 클릭 시 비밀 로그인 이벤트 트리거 */}
+              <InfoRow 
+                label="대표자" 
+                value={companyInfo?.ceo} 
+                onLabelClick={handleSecretClick} 
+              />
               
               <InfoRow 
                 label="사업자등록번호" 
