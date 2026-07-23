@@ -103,7 +103,7 @@ const Footer = ({ companyInfo, isMapScriptLoaded, isLoggedIn, setShowLoginModal 
       </div>
 
       {/* 🏢 [레이어 2] 지도 위에 떠 있는 회사 정보 카드 */}
-      <div className="absolute top-8 left-6 right-6 md:right-16 md:left-auto bg-white/90 backdrop-blur-md p-6 md:p-8 rounded-2xl shadow-2xl border border-neutral-200/50 max-w-full md:w-[700px] z-10 transition-all">
+      <div className="absolute top-8 left-6 right-6 md:right-16 md:left-auto bg-white/65 backdrop-blur-md p-6 md:p-8 rounded-2xl shadow-2xl border border-neutral-200/50 max-w-full md:w-[700px] z-10 transition-all">
         
         <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8">
           
