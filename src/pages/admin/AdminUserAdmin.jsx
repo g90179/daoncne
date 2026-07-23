@@ -86,7 +86,7 @@ const AdminUserAdmin = ({ loggedInEmail }) => {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
         
         {/* 👈 좌측 배치: 마스터 계정 리스트 플랫 카드 */}
-        <div className="bg-white/90 backdrop-blur-md p-6 md:p-8 rounded-[2.5rem] shadow-[0_25px_60px_rgba(0,0,0,0.02)] border border-white/70 flex flex-col justify-between h-[760px] transition-all">
+        <div className="bg-white/90 backdrop-blur-md p-6 md:p-8 rounded-[2.5rem] shadow-[0_25px_60px_rgba(0,0,0,0.02)] border border-white/70 flex flex-col justify-between h-[85vh] transition-all">
           
           <div className="border-b border-slate-100 pb-3 mb-2 px-1">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
@@ -161,7 +161,7 @@ const AdminUserAdmin = ({ loggedInEmail }) => {
         </div>
 
         {/* 👉 우측 배치: 정보 변경 폼 에디터 */}
-        <div className="bg-white/90 backdrop-blur-md p-6 md:p-8 rounded-[2.5rem] shadow-[0_25px_60px_rgba(0,0,0,0.02)] border border-white/70 h-[760px] overflow-y-auto custom-scrollbar transition-all">
+        <div className="bg-white/90 backdrop-blur-md p-6 md:p-8 rounded-[2.5rem] shadow-[0_25px_60px_rgba(0,0,0,0.02)] border border-white/70 h-[85vh] overflow-y-auto custom-scrollbar transition-all">
           {editingUser ? (
             <div className="space-y-5 text-left animate-fadeIn">
               <div className="flex justify-between items-center border-b border-slate-100 pb-3">

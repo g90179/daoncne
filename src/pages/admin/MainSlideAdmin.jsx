@@ -136,7 +136,7 @@ const MainSlideAdmin = () => {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
         
         {/* 👈 좌측: 메인 슬라이드 리스트 보드 */}
-        <div className="bg-white/90 backdrop-blur-md p-6 md:p-8 rounded-[2.5rem] shadow-[0_25px_60px_rgba(0,0,0,0.02)] border border-white/70 flex flex-col justify-between h-[760px] transition-all">
+        <div className="bg-white/90 backdrop-blur-md p-6 md:p-8 rounded-[2.5rem] shadow-[0_25px_60px_rgba(0,0,0,0.02)] border border-white/70 flex flex-col justify-between h-[85vh] transition-all">
           
           {/* 플랫 헤더 */}
           <div className="border-b border-slate-100 pb-3 mb-2 px-1">
@@ -206,7 +206,7 @@ const MainSlideAdmin = () => {
         </div>
 
         {/* 👉 우측: 슬라이드 정보 빌더 에디터 폼 */}
-        <div className="bg-white/90 backdrop-blur-md p-6 md:p-8 rounded-[2.5rem] shadow-[0_25px_60px_rgba(0,0,0,0.02)] border border-white/70 h-[760px] overflow-y-auto custom-scrollbar transition-all">
+        <div className="bg-white/90 backdrop-blur-md p-6 md:p-8 rounded-[2.5rem] shadow-[0_25px_60px_rgba(0,0,0,0.02)] border border-white/70 h-[85vh] overflow-y-auto custom-scrollbar transition-all">
           <form onSubmit={handleSubmit} className="space-y-5 text-left">
             
             <div className="border-b border-slate-100 pb-3 flex justify-between items-center">

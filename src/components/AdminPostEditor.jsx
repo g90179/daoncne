@@ -37,13 +37,26 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
   const [workYear, setWorkYear] = useState('');
   const [workMonth, setWorkMonth] = useState('');
 
-  // ✨ [신규] 의뢰업체명 / 작업지 주소 / 키워드
+  // 의뢰업체명 / 작업지 주소 / 키워드
   const [clientName, setClientName] = useState('');
   const [workAddress, setWorkAddress] = useState('');
   const [workLat, setWorkLat] = useState(null);
   const [workLng, setWorkLng] = useState(null);
   const [keywords, setKeywords] = useState([]);
   const [keywordInput, setKeywordInput] = useState('');
+
+  // ✨ [신규] 에디터 전체화면 상태 관리
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // ✨ [신규] 전체화면일 때 배경 스크롤 방지
+  useEffect(() => {
+    if (isFullscreen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'auto';
+    }
+    return () => { document.body.style.overflow = 'auto'; };
+  }, [isFullscreen]);
 
   useEffect(() => {
     if (editingPost) {
@@ -54,7 +67,6 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
       setExistingFiles(editingPost.files?.filter(f => f.name !== 'editor_thumbnail') || []);
       setDeletedFileIds([]);
 
-      // ✨ [신규] 기존 값 로드
       setClientName(editingPost.clientName || '');
       setWorkAddress(editingPost.workAddress || '');
       setWorkLat(editingPost.workLat ?? null);
@@ -78,7 +90,6 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
     setDeletedFileIds(prev => [...prev, fileId]);
   };
 
-  // ✨ [신규] 다음 우편번호 팝업 → 주소 선택 → 카카오 Geocoder로 좌표 변환
   const handleAddressSearch = () => {
     if (!window.daum || !window.daum.Postcode) {
       alert('주소 검색 스크립트를 아직 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
@@ -112,13 +123,11 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
     setWorkLng(null);
   };
 
-  // ✨ [신규] 키워드 추가 (Enter 또는 쉼표로 구분)
   const handleKeywordInputKeyDown = (e) => {
     if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault();
       addKeywordFromInput();
     } else if (e.key === 'Backspace' && !keywordInput && keywords.length > 0) {
-      // 입력값이 비었을 때 백스페이스로 마지막 태그 삭제
       setKeywords(prev => prev.slice(0, -1));
     }
   };
@@ -139,7 +148,6 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
   const handleSubmit = async () => {
     if (!title.trim()) { alert('제목을 입력해주세요.'); return; }
 
-    // 입력창에 남아있는데 아직 태그로 확정 안 된 키워드도 저장 시 함께 반영
     const finalKeywords = keywordInput.trim()
       ? [...keywords, keywordInput.trim().replace(/^#/, '')]
       : keywords;
@@ -150,7 +158,6 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
     formData.append('category', category);
     formData.append('deletedFileIds', JSON.stringify(deletedFileIds));
 
-    // ✨ [신규] 필수 아님 — 값이 있을 때만 의미 있게 전송
     formData.append('clientName', clientName);
     formData.append('workAddress', workAddress);
     if (workLat != null) formData.append('workLat', String(workLat));
@@ -182,6 +189,8 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
 
   return (
     <div className="space-y-6 text-left animate-fadeIn">
+      
+      {/* 상단 툴바 (카테고리, 취소, 저장 버튼) */}
       <div className="border-b border-slate-100 pb-4 flex justify-between items-center gap-4">
         <div className="bg-slate-100/80 backdrop-blur-sm px-4 py-2 rounded-xl border border-slate-200/40 shadow-inner flex items-center">
           <select 
@@ -222,7 +231,6 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
         />
       </div>
 
-      {/* ✨ [신규] 의뢰업체명 / 작업지 주소 / 작업 키워드 — 전부 선택 입력 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-1">
         <div className="space-y-1.5">
           <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">의뢰업체명 <span className="normal-case font-medium text-slate-300">(선택)</span></label>
@@ -234,7 +242,6 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
           />
         </div>
 
-        {/* ✨ [신규] 작업년도 / 작업월 */}
         <div className="space-y-1.5">
           <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">작업년도/월 <span className="normal-case font-medium text-slate-300">(선택)</span></label>
           <div className="flex items-center gap-2">
@@ -319,34 +326,85 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
         </div>
       </div>
 
-      <div className="min-h-[480px] rounded-2xl overflow-hidden border border-slate-200/50 bg-slate-50/40 focus-within:bg-white focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-400/5 transition-all duration-300 ckeditor-custom-wrapper">
-        <CKEditor
-          editor={ ClassicEditor }
-          config={ {
-            licenseKey: 'GPL',
-            plugins: [ 
-              Essentials, Paragraph, Bold, Italic, Strikethrough, Heading, List, Undo,
-              Table, TableToolbar, TableProperties, TableCellProperties,
-              Image, ImageToolbar, ImageCaption, ImageStyle, ImageUpload, SimpleUploadAdapter,
-              MediaEmbed, MediaEmbedToolbar
-            ],
-            toolbar: [
-              'undo', 'redo', '|', 'heading', '|', 'bold', 'italic', 'strikethrough', '|', 
-              'bulletedList', 'numberedList', '|', 'insertTable', 'uploadImage', 'mediaEmbed'
-            ],
-            table: { contentToolbar: [ 'tableColumn', 'tableRow', 'mergeTableCells', '|', 'tableProperties', 'tableCellProperties' ] },
-            simpleUpload: {
-              uploadUrl: `${API_URL}/posts/upload`,
-              headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            },
-            placeholder: '내용을 입력하세요.'
-          } }
-          data={ editingPost ? editingPost.content : '' }
-          onChange={ ( event, editor ) => {
-            const data = editor.getData();
-            setContent( data );
-          } }
-        />
+      {/* ✨ [신규] 에디터 및 전체화면 버튼 래퍼 */}
+      <div className="px-1">
+        <div className="flex justify-between items-end pb-2">
+          <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">본문 편집</label>
+          <button
+            type="button"
+            onClick={() => setIsFullscreen(true)}
+            className="text-[11px] font-bold text-blue-500 hover:text-blue-600 flex items-center gap-1 transition cursor-pointer bg-blue-50/50 px-3 py-1.5 rounded-lg border border-blue-100"
+          >
+            ⛶ 화면 꽉 차게 쓰기
+          </button>
+        </div>
+
+        {/* 🚀 전체화면 상태일 때 CKEditor 높이를 꽉 채워주는 전용 CSS 주입 */}
+        {isFullscreen && (
+          <style>{`
+            .fullscreen-ckeditor .ck-editor { display: flex; flex-direction: column; height: 100%; }
+            .fullscreen-ckeditor .ck-editor__main { flex: 1; overflow-y: auto; }
+            .fullscreen-ckeditor .ck-content { min-height: 100% !important; border: none !important; box-shadow: none !important; }
+          `}</style>
+        )}
+
+        {/* 🚀 isFullscreen 상태에 따라 모달 창으로 변환되는 마법의 컨테이너 */}
+        <div className={
+          isFullscreen
+            ? "fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 md:p-10 transition-all duration-300 animate-fadeIn"
+            : "transition-all duration-300"
+        }>
+          <div className={
+            isFullscreen
+              ? "bg-white w-full h-full max-w-[1400px] rounded-[2rem] shadow-2xl flex flex-col overflow-hidden border border-slate-200"
+              : "min-h-[480px] rounded-2xl overflow-hidden border border-slate-200/50 bg-slate-50/40 focus-within:bg-white focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-400/5 transition-all duration-300 ckeditor-custom-wrapper"
+          }>
+            
+            {/* 전체화면일 때만 보이는 상단 닫기 헤더 */}
+            {isFullscreen && (
+              <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 bg-slate-50 shrink-0">
+                <div className="font-bold text-slate-700 text-sm">본문 상세 편집 (전체화면 모드)</div>
+                <button
+                  type="button"
+                  onClick={() => setIsFullscreen(false)}
+                  className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-rose-500 hover:shadow-lg transition cursor-pointer"
+                >
+                  ✕ 원래 크기로 축소
+                </button>
+              </div>
+            )}
+
+            <div className={`flex-1 flex flex-col overflow-hidden ${isFullscreen ? 'fullscreen-ckeditor' : ''}`}>
+              <CKEditor
+                editor={ ClassicEditor }
+                config={ {
+                  licenseKey: 'GPL',
+                  plugins: [ 
+                    Essentials, Paragraph, Bold, Italic, Strikethrough, Heading, List, Undo,
+                    Table, TableToolbar, TableProperties, TableCellProperties,
+                    Image, ImageToolbar, ImageCaption, ImageStyle, ImageUpload, SimpleUploadAdapter,
+                    MediaEmbed, MediaEmbedToolbar
+                  ],
+                  toolbar: [
+                    'undo', 'redo', '|', 'heading', '|', 'bold', 'italic', 'strikethrough', '|', 
+                    'bulletedList', 'numberedList', '|', 'insertTable', 'uploadImage', 'mediaEmbed'
+                  ],
+                  table: { contentToolbar: [ 'tableColumn', 'tableRow', 'mergeTableCells', '|', 'tableProperties', 'tableCellProperties' ] },
+                  simpleUpload: {
+                    uploadUrl: `${API_URL}/posts/upload`,
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                  },
+                  placeholder: '내용을 입력하세요.'
+                } }
+                data={ editingPost ? editingPost.content : '' }
+                onChange={ ( event, editor ) => {
+                  const data = editor.getData();
+                  setContent( data );
+                } }
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="p-6 bg-slate-50/60 rounded-2xl border border-slate-100/70 space-y-4">

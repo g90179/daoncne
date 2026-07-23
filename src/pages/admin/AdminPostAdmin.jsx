@@ -54,7 +54,7 @@ const AdminPostAdmin = ({ posts, fetchPosts, activeTab, setActiveTab }) => {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
         
         {/* 👈 좌측: 콘텐츠 목록 카드 */}
-        <div className="bg-white/80 backdrop-blur-xl p-6 md:p-10 rounded-[2.5rem] shadow-[0_30px_70px_rgba(0,0,0,0.02)] border border-white/70 flex flex-col justify-between h-[850px] transition-all duration-500">
+        <div className="bg-white/80 backdrop-blur-xl p-6 md:p-10 rounded-[2.5rem] shadow-[0_30px_70px_rgba(0,0,0,0.02)] border border-white/70 flex flex-col justify-between h-[85vh] transition-all duration-500">
           
           <div>
             {/* 카테고리 바 영역 */}
@@ -102,7 +102,7 @@ const AdminPostAdmin = ({ posts, fetchPosts, activeTab, setActiveTab }) => {
         </div>
 
         {/* 👉 우측: 에디터 폼 컴포넌트 박스 */}
-        <div className="bg-white/80 backdrop-blur-xl p-6 md:p-10 rounded-[2.5rem] shadow-[0_30px_70px_rgba(0,0,0,0.02)] border border-white/70 h-[850px] overflow-y-auto custom-scrollbar transition-all duration-500">
+        <div className="bg-white/80 backdrop-blur-xl p-6 md:p-10 rounded-[2.5rem] shadow-[0_30px_70px_rgba(0,0,0,0.02)] border border-white/70 h-[85vh] overflow-y-auto custom-scrollbar transition-all duration-500">
           <AdminPostEditor 
             editingPost={editingPost} 
             onCancel={() => setEditingPost(null)} 
