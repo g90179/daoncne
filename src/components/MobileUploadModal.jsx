@@ -139,21 +139,33 @@ const MobileUploadModal = ({ isOpen, onClose, onUpload, editingPost }) => {
           });
         });
 
+        // const tempFormData = new FormData();
+        // tempFormData.append('files', fileToUpload, fileToUpload.name || 'mobile-media.jpg');
         const tempFormData = new FormData();
-        tempFormData.append('files', fileToUpload, fileToUpload.name || 'mobile-media.jpg');
+        tempFormData.append('upload', fileToUpload, fileToUpload.name || 'mobile-media.jpg'); // ✨ 'files' → 'upload'
 
         let imageUrl = '';
         try {
           const response = await api.post('/posts/upload', tempFormData, {
-            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('token')}`,
+              'Content-Type': 'multipart/form-data', // ✨ 명시적으로 추가
+            }
           });
           const rawUrl = response.data?.url || (Array.isArray(response.data) ? response.data[0]?.url : response.data);
-          // ✨ 절대 URL 그대로 사용 (도메인이 다른 운영 환경에서도 정상 표시되도록)
           if (rawUrl) {
             imageUrl = rawUrl;
+          } else {
+            // ✨ 응답은 왔는데 url이 없는 이상한 케이스도 로그로 남김
+            console.error('업로드 응답에 url이 없습니다:', response.data);
           }
         } catch (uploadErr) {
-          console.warn('서버 업로드 실패, 로컬 미리보기로 대체합니다.', uploadErr);
+          // ✨ [강화] 실제 에러 원인(상태 코드, 서버 메시지)까지 콘솔에 자세히 남김
+          console.error('서버 업로드 실패:', {
+            status: uploadErr?.response?.status,
+            data: uploadErr?.response?.data,
+            message: uploadErr?.message,
+          });
           imageUrl = URL.createObjectURL(fileToUpload);
         }
 
