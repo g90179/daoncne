@@ -111,7 +111,12 @@ const AdminPolicyAdmin = () => {
           <div>
             <div className="mb-6 flex justify-center sm:justify-start">
               <div className="bg-slate-200/50 backdrop-blur-sm p-1.5 rounded-2xl border border-white/60 flex gap-1 shadow-inner w-full sm:w-auto">
-                {['ALL', '전체'], ['PRIVACY', '개인정보'], ['TERMS', '이용약관'].map(([key, label]) => (
+                {/* 🚀 [수정됨] 배열 문법 오류 해결 및 이름 변경 */}
+                {[
+                  ['ALL', '전체'], 
+                  ['PRIVACY', '개인정보처리방침'], 
+                  ['TERMS', '이용약관']
+                ].map(([key, label]) => (
                   <button
                     key={key}
                     onClick={() => setFilterType(key)}
@@ -210,7 +215,7 @@ const AdminPolicyAdmin = () => {
                 <input type="text" placeholder="예: 개인정보처리방침 v1.0" className="w-full bg-slate-50/60 border border-slate-200/50 rounded-2xl px-5 py-3.5 text-sm font-medium outline-none focus:bg-white focus:border-blue-400 transition" value={title} onChange={e => setTitle(e.target.value)} />
               </div>
 
-              {/* ✨ [신규] 약관 본문 에디터 및 전체화면 버튼 래퍼 */}
+              {/* 약관 본문 에디터 및 전체화면 버튼 래퍼 */}
               <div className="space-y-1.5 flex-1 flex flex-col min-h-[380px]">
                 <div className="flex justify-between items-end shrink-0">
                   <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">약관 본문 *</label>

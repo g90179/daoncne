@@ -26,6 +26,10 @@ const AdminDashboard = ({
   const navigate = useNavigate();
   const [adminView, setAdminView] = useState('posts'); 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  
+  // 🚀 [신규] 모바일에서 사이드바를 열고 닫기 위한 상태값
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   const isSuperAdmin = loggedInEmail === DEBUG_ALLOWED_EMAIL;
 
   useEffect(() => {
@@ -75,21 +79,44 @@ const AdminDashboard = ({
   return (
     <div className="flex bg-[#eef2f7] min-h-screen w-full relative font-sans antialiased text-slate-800 tracking-tight">
       
+      {/* 🚀 [모바일 백드롭 딤 처리] 메뉴가 열렸을 때 뒷배경 어둡게 처리 */}
+      {isMobileMenuOpen && (
+        <div 
+          onClick={() => setIsMobileMenuOpen(false)} 
+          className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[110] md:hidden transition-opacity"
+        />
+      )}
+
       {/* 사이드바 */}
-      <aside className="w-24 md:w-64 bg-white/70 backdrop-blur-md flex flex-col h-screen sticky top-0 border-r border-slate-200/50 p-6 justify-between z-[100] transition-all">
+      <aside className={`
+        fixed md:sticky top-0 h-screen z-[120] bg-white/90 md:bg-white/70 backdrop-blur-md flex flex-col p-6 justify-between border-r border-slate-200/50 transition-all duration-300
+        w-64 md:w-64
+        ${isMobileMenuOpen ? 'left-0 shadow-2xl' : '-left-64 md:left-0'}
+      `}>
         <div className="space-y-8">
-          <div className="px-3 py-2 flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-orange-400 animate-pulse" />
-            <span className="text-sm font-black tracking-widest text-slate-900 uppercase hidden md:inline-block">
-              daon<span className="text-orange-500">.cne</span>
-            </span>
+          <div className="px-3 py-2 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-orange-400 animate-pulse" />
+              <span className="text-sm font-black tracking-widest text-slate-900 uppercase">
+                daon<span className="text-orange-500">.cne</span>
+              </span>
+            </div>
+            {/* 모바일에서 사이드바 닫기 버튼 */}
+            <button 
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="md:hidden text-slate-400 hover:text-slate-700 font-bold text-lg cursor-pointer"
+            >
+              ✕
+            </button>
           </div>
 
           <nav className="space-y-2">
-            <button onClick={() => window.location.href = '/'} 
-            className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold text-xs transition-all duration-300 cursor-pointer text-left text-slate-400 hover:text-slate-700 hover:bg-slate-100/50">
+            <button 
+              onClick={() => { setIsMobileMenuOpen(false); window.location.href = '/'; }} 
+              className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold text-xs transition-all duration-300 cursor-pointer text-left text-slate-400 hover:text-slate-700 hover:bg-slate-100/50"
+            >
               <span className="text-base">🏠</span>
-              <span className="hidden md:inline-block font-semibold tracking-wide">홈페이지</span>
+              <span className="font-semibold tracking-wide">홈페이지</span>
             </button>
             {[
               { id: 'posts', label: '콘텐츠 관리', icon: '📝' },
@@ -103,7 +130,7 @@ const AdminDashboard = ({
               return (
                 <button
                   key={menu.id}
-                  onClick={() => setAdminView(menu.id)}
+                  onClick={() => { setAdminView(menu.id); setIsMobileMenuOpen(false); }}
                   className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold text-xs transition-all duration-300 cursor-pointer text-left ${
                     isActive
                       ? 'bg-blue-900 text-white shadow-lg shadow-slate-900/10 scale-[1.02]'
@@ -111,40 +138,49 @@ const AdminDashboard = ({
                   }`}
                 >
                   <span className="text-base">{menu.icon}</span>
-                  <span className="hidden md:inline-block font-semibold tracking-wide">{menu.label}</span>
+                  <span className="font-semibold tracking-wide">{menu.label}</span>
                 </button>
               );
             })}
           </nav>
         </div>
 
-        {/* 사이드바 하단 (브랜드 로고 또는 여백 유지) */}
-        <div className="pt-4 border-t border-slate-100 hidden md:block">
+        {/* 사이드바 하단 브랜드 로고 */}
+        <div className="pt-4 border-t border-slate-100">
           <div className="text-[10px] text-slate-400 text-center font-mono tracking-wider">DAON CNE ADMIN</div>
         </div>
       </aside>
 
       {/* 메인 보드 */}
-      <main className="flex-1 flex flex-col min-w-0 relative">
+      <main className="flex-1 flex flex-col min-w-0 relative w-full">
         
-        {/* 🚀 [신규 추가] 최상단 얇은 바 (접속 계정 정보 및 로그아웃 버튼 우측 배치) */}
-        <div className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 px-6 py-2.5 flex justify-end items-center gap-3 text-xs font-medium text-slate-600 shadow-sm z-50">
+        {/* 최상단 얇은 바 (우측 끝에 메뉴 펼치기 버튼 및 계정 정보/로그아웃 배치) */}
+        <div className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 px-4 md:px-6 py-2.5 flex justify-between md:justify-end items-center gap-3 text-xs font-medium text-slate-600 shadow-sm z-50">
+          
+          {/* 🚀 [신규] 모바일 전용 좌측 메뉴 토글 햄버거 버튼 */}
+          <button
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="md:hidden flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-xl transition cursor-pointer"
+          >
+            <span className="text-sm">☰</span> 메뉴
+          </button>
+
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
-            <span className="text-slate-400">접속 계정:</span>
-            <strong className="text-slate-900 font-bold font-mono">{loggedInEmail || '관리자'}</strong>
+            <span className="text-slate-400 hidden sm:inline">접속 계정:</span>
+            <strong className="text-slate-900 font-bold font-mono truncate max-w-[140px] sm:max-w-none">{loggedInEmail || '관리자'}</strong>
           </div>
           <span className="text-slate-300">|</span>
           <button 
             onClick={handleLogout} 
-            className="text-red-500 hover:text-red-600 font-bold transition cursor-pointer flex items-center gap-1 bg-red-50/80 hover:bg-red-100 px-3 py-1.5 rounded-xl active:scale-95"
+            className="text-red-500 hover:text-red-600 font-bold transition cursor-pointer flex items-center gap-1 bg-red-50/80 hover:bg-red-100 px-3 py-1.5 rounded-xl active:scale-95 shrink-0"
           >
-            <span>🔓</span> 로그아웃
+            <span>🔓</span> <span className="hidden sm:inline">로그아웃</span>
           </button>
         </div>
 
         {/* 본문 콘텐츠 래퍼 */}
-        <div className="p-6 md:p-12 flex-1 flex flex-col space-y-6 overflow-x-hidden">
+        <div className="p-4 md:p-12 flex-1 flex flex-col space-y-6 overflow-x-hidden">
           <div className="flex justify-between items-center px-2">
             <div>
               <div className="text-[10px] uppercase tracking-widest font-bold text-slate-400 font-mono flex items-center gap-1.5">
@@ -156,7 +192,7 @@ const AdminDashboard = ({
                 {viewTitles[adminView]}
               </h1>
             </div>
-            <div className="text-xs font-mono text-slate-400 bg-white/40 border border-white/60 px-4 py-2 rounded-2xl shadow-sm">
+            <div className="text-xs font-mono text-slate-400 bg-white/40 border border-white/60 px-4 py-2 rounded-2xl shadow-sm hidden sm:block">
               {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
             </div>
           </div>
