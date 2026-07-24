@@ -5,11 +5,13 @@ import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import api from './api/axios'; // 🔑 통합된 API 모듈 불러오기 (인터셉터 및 Refresh 로직 내장)
 import Layout from './components/Layout';
 import HomeView from './components/HomeView';
+import VisitorTracker from './components/VisitorTracker'; // 📊 방문자 로그 트래커
 import QuoteBoard from './pages/QuoteBoard';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ForgotPassword from './pages/admin/ForgotPassword'; 
 import ResetPassword from './pages/admin/ResetPassword';
 import PortfolioDetail from './pages/PortfolioDetail'; // 포트폴리오
+
 import { 
   PolicyView, 
   PolicyHistoryList, 
@@ -73,7 +75,6 @@ function App() {
   const fetchPosts = async () => {
     try {
       const categoryParam = activeTab === '전체' ? '' : activeTab;
-      // 🔑 통합된 api 인스턴스 사용 (토큰 자동 주입 및 401 갱신 처리)
       const response = await api.get(`/posts?category=${categoryParam}`);
       setPosts(response.data);
     } catch (e) {}
@@ -81,7 +82,6 @@ function App() {
 
   const fetchCompanyInfo = async () => {
     try {
-      // 🔑 통합된 api 인스턴스 사용
       const res = await api.get('/company');
       if (res.data) setCompanyInfo(res.data);
     } catch (e) {}
@@ -90,7 +90,6 @@ function App() {
   // 3. 인증 제어기
   const handleLogin = async () => {
     try {
-      // 🔑 통합된 api 인스턴스 사용
       const res = await api.post('/auth/login', { email, password });
       localStorage.setItem('token', res.data.access_token);
       localStorage.setItem('refreshToken', res.data.refresh_token);
@@ -99,7 +98,6 @@ function App() {
       setIsLoggedIn(true);
       setShowLoginModal(false);
       
-      // ✅ 수정됨: Hash(#) 라우터 방식이 아니므로 /admDashboard 로 바로 이동합니다.
       window.location.href = '/admDashboard'; 
     } catch (e) { alert('로그인 정보가 틀렸습니다.'); }
   };
@@ -120,6 +118,9 @@ function App() {
         handleLogin={handleLogin}
       />
 
+      {/* 📊 [신규 추가] 라우터 컨텍스트 내부에서 페이지 이동을 감지하여 방문 기록을 남깁니다. */}
+      <VisitorTracker />
+
       <Routes>
         <Route element={
           <Layout 
@@ -137,7 +138,6 @@ function App() {
           <Route path="/company" element={<Company />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          {/* ✅ 여기에 동적 라우팅 추가 ( :id 부분이 게시글 번호로 자동 매칭됩니다 ) */}
           <Route path="/portfolio/:id" element={<PortfolioDetail />} />
         </Route>
 
@@ -163,7 +163,7 @@ function App() {
 }
 
 /**
- * 🔒 [신규 지원 컴포넌트] AdminAuthManager
+ * 🔒 [지원 컴포넌트] AdminAuthManager
  */
 function AdminAuthManager({ showLoginModal, setShowLoginModal, email, setEmail, password, setPassword, handleLogin }) {
   const location = useLocation();

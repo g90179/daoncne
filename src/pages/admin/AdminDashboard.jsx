@@ -6,6 +6,7 @@ import MainSlideAdmin from './MainSlideAdmin';
 import AdminUserAdmin from './AdminUserAdmin';
 import AdminCompanyAdmin from './AdminCompanyAdmin';
 import AdminPolicyAdmin from './AdminPolicyAdmin'; 
+import AdminVisitorLog from './AdminVisitorLog';
 import MobileUploadModal from '../../components/MobileUploadModal';
 import api from '../../api/axios'; // 🔑 통합된 API 인스턴스 사용
 
@@ -38,7 +39,8 @@ const AdminDashboard = ({
     slides: '메인 슬라이드 관리',
     users: '계정 관리',
     company: '회사 정보 관리',
-    policies: '정책 관리'
+    policies: '정책 관리',
+    visitors: '방문자 분석 통계'
   };
 
   // 🚀 모바일 전용 초고속 사진/글 업로드 API 호출 함수 (백엔드 스펙 매칭 완료)
@@ -53,7 +55,6 @@ const AdminDashboard = ({
       formData.append('category', activeTab || 'portfolio');
 
       // 2. 파일 데이터 셋팅 
-      // 🚨 백엔드 FilesInterceptor('files') 스펙에 맞추어 키 이름을 반드시 'files'로 지정해야 합니다.
       if (file) {
         formData.append('files', file, file.name || 'mobile-media.jpg');
       }
@@ -96,6 +97,7 @@ const AdminDashboard = ({
               { id: 'users', label: '계정 관리', icon: '👤' },
               { id: 'company', label: '회사 정보 관리', icon: '🏢' },
               { id: 'policies', label: '정책 관리', icon: '📋' },
+              { id: 'visitors', label: '방문자 통계', icon: '📊' },
             ].map((menu) => {
               const isActive = adminView === menu.id;
               return (
@@ -116,50 +118,70 @@ const AdminDashboard = ({
           </nav>
         </div>
 
-        <div className="space-y-2 pt-4 border-t border-slate-100">
-          <button onClick={handleLogout} className="w-full flex items-center gap-4 px-4 py-3 text-xs font-bold text-red-400 hover:bg-red-50 rounded-2xl transition cursor-pointer text-left">
-            <span>🔓</span><span className="hidden md:inline-block">로그아웃</span>
-          </button>
+        {/* 사이드바 하단 (브랜드 로고 또는 여백 유지) */}
+        <div className="pt-4 border-t border-slate-100 hidden md:block">
+          <div className="text-[10px] text-slate-400 text-center font-mono tracking-wider">DAON CNE ADMIN</div>
         </div>
       </aside>
 
       {/* 메인 보드 */}
-      <main className="flex-1 p-6 md:p-12 relative overflow-x-hidden flex flex-col space-y-6">
-        <div className="flex justify-between items-center px-2">
-          <div>
-            <div className="text-[10px] uppercase tracking-widest font-bold text-slate-400 font-mono flex items-center gap-1.5">
-              <span>Floor Main</span>
-              <span className="text-slate-300">/</span>
-              <span className="text-slate-900 font-black">{viewTitles[adminView]}</span>
-            </div>
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight mt-1.5">
-              {viewTitles[adminView]}
-            </h1>
+      <main className="flex-1 flex flex-col min-w-0 relative">
+        
+        {/* 🚀 [신규 추가] 최상단 얇은 바 (접속 계정 정보 및 로그아웃 버튼 우측 배치) */}
+        <div className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 px-6 py-2.5 flex justify-end items-center gap-3 text-xs font-medium text-slate-600 shadow-sm z-50">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+            <span className="text-slate-400">접속 계정:</span>
+            <strong className="text-slate-900 font-bold font-mono">{loggedInEmail || '관리자'}</strong>
           </div>
-          <div className="text-xs font-mono text-slate-400 bg-white/40 border border-white/60 px-4 py-2 rounded-2xl shadow-sm">
-            {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-          </div>
+          <span className="text-slate-300">|</span>
+          <button 
+            onClick={handleLogout} 
+            className="text-red-500 hover:text-red-600 font-bold transition cursor-pointer flex items-center gap-1 bg-red-50/80 hover:bg-red-100 px-3 py-1.5 rounded-xl active:scale-95"
+          >
+            <span>🔓</span> 로그아웃
+          </button>
         </div>
 
-        <div className="flex-1">
-          {adminView === 'posts' && (
-            <AdminPostAdmin 
-              posts={posts} 
-              fetchPosts={fetchPosts} 
-              activeTab={activeTab} 
-              setActiveTab={setActiveTab} 
-            />
-          )}
-          {adminView === 'slides' && <MainSlideAdmin />}
-          {adminView === 'users' && <AdminUserAdmin />}
-          {adminView === 'company' && (
-            <AdminCompanyAdmin 
-              isSuperAdmin={isSuperAdmin} 
-              isMapScriptLoaded={isMapScriptLoaded} 
-              fetchGlobalCompanyInfo={fetchGlobalCompanyInfo} 
-            />
-          )}
-          {adminView === 'policies' && <AdminPolicyAdmin />}
+        {/* 본문 콘텐츠 래퍼 */}
+        <div className="p-6 md:p-12 flex-1 flex flex-col space-y-6 overflow-x-hidden">
+          <div className="flex justify-between items-center px-2">
+            <div>
+              <div className="text-[10px] uppercase tracking-widest font-bold text-slate-400 font-mono flex items-center gap-1.5">
+                <span>Floor Main</span>
+                <span className="text-slate-300">/</span>
+                <span className="text-slate-900 font-black">{viewTitles[adminView]}</span>
+              </div>
+              <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight mt-1.5">
+                {viewTitles[adminView]}
+              </h1>
+            </div>
+            <div className="text-xs font-mono text-slate-400 bg-white/40 border border-white/60 px-4 py-2 rounded-2xl shadow-sm">
+              {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+            </div>
+          </div>
+
+          <div className="flex-1">
+            {adminView === 'posts' && (
+              <AdminPostAdmin 
+                posts={posts} 
+                fetchPosts={fetchPosts} 
+                activeTab={activeTab} 
+                setActiveTab={setActiveTab} 
+              />
+            )}
+            {adminView === 'slides' && <MainSlideAdmin />}
+            {adminView === 'users' && <AdminUserAdmin />}
+            {adminView === 'company' && (
+              <AdminCompanyAdmin 
+                isSuperAdmin={isSuperAdmin} 
+                isMapScriptLoaded={isMapScriptLoaded} 
+                fetchGlobalCompanyInfo={fetchGlobalCompanyInfo} 
+              />
+            )}
+            {adminView === 'policies' && <AdminPolicyAdmin />}
+            {adminView === 'visitors' && <AdminVisitorLog />}
+          </div>
         </div>
       </main>
 
