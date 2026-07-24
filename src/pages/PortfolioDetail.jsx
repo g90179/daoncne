@@ -3,6 +3,29 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import api from '../api/axios';
+import { API_URL } from '../config';
+
+// ✨ [신규] 확장자 기반 파일 타입 아이콘/라벨 매핑
+const getFileTypeInfo = (fileName = '', fileUrl = '') => {
+  const ext = (fileName.split('.').pop() || fileUrl.split('.').pop() || '').toLowerCase();
+
+  const map = {
+    pdf:  { icon: '📕', label: 'PDF' },
+    doc:  { icon: '📘', label: 'DOC' },
+    docx: { icon: '📘', label: 'DOC' },
+    xls:  { icon: '📗', label: 'XLS' },
+    xlsx: { icon: '📗', label: 'XLS' },
+    ppt:  { icon: '📙', label: 'PPT' },
+    pptx: { icon: '📙', label: 'PPT' },
+    zip:  { icon: '🗜️', label: 'ZIP' },
+    rar:  { icon: '🗜️', label: 'RAR' },
+    '7z': { icon: '🗜️', label: '7Z' },
+    txt:  { icon: '📄', label: 'TXT' },
+    hwp:  { icon: '📄', label: 'HWP' },
+  };
+
+  return map[ext] || { icon: '📎', label: ext ? ext.toUpperCase() : 'FILE' };
+};
 
 const PortfolioDetail = () => {
   const { id } = useParams(); // URL의 :id 값을 가져옵니다
@@ -33,6 +56,12 @@ const PortfolioDetail = () => {
     const doc = new DOMParser().parseFromString(html, 'text/html');
     return doc.body.textContent || "";
   };
+
+  // ✨ [신규] 이미지·영상·에디터 썸네일을 제외한 일반 첨부파일만 추출
+  const attachmentFiles = post?.files?.filter(f =>
+    f.type !== 'image' && f.type !== 'video' && f.name !== 'editor_thumbnail'
+    && !f.url?.toLowerCase().endsWith('.mp4')
+  ) || [];
 
   const BackButton = () => (
     <button
@@ -123,10 +152,41 @@ const PortfolioDetail = () => {
                 </Link>
               </div>
             ) : (
-              <article
-                className="w-full max-w-none text-neutral-700 font-sans text-sm md:text-base leading-relaxed animate-fadeIn focus:outline-none prose"
-                dangerouslySetInnerHTML={{ __html: post.content }}
-              />
+              <>
+                {/* ✨ [신규] 첨부파일 카드 목록 (본문 위) */}
+                {attachmentFiles.length > 0 && (
+                  <div className="mb-8 space-y-2">
+                    <h3 className="text-xs font-black text-neutral-400 uppercase tracking-widest mb-3">📎 첨부파일 ({attachmentFiles.length})</h3>
+                    {attachmentFiles.map((file, idx) => {
+                      const { icon, label } = getFileTypeInfo(file.name, file.url);
+                      return (
+                        <a
+                          key={file.id || idx}
+                          href={`${API_URL}/posts/files/${file.id}/download`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          download={file.name}
+                          className="flex items-center gap-4 bg-neutral-50 hover:bg-neutral-100 border border-neutral-100 rounded-2xl px-5 py-3.5 transition-colors group"
+                        >
+                          <span className="text-2xl shrink-0">{icon}</span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-bold text-neutral-800 truncate group-hover:text-blue-500 transition-colors">
+                              {file.name}
+                            </p>
+                            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mt-0.5">{label}</p>
+                          </div>
+                          <span className="text-neutral-300 group-hover:text-blue-400 transition-colors shrink-0 text-lg">↓</span>
+                        </a>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <article
+                  className="w-full max-w-none text-neutral-700 font-sans text-sm md:text-base leading-relaxed animate-fadeIn focus:outline-none prose"
+                  dangerouslySetInnerHTML={{ __html: post.content }}
+                />
+              </>
             )}
           </div>
 
