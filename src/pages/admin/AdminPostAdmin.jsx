@@ -1,6 +1,7 @@
 // daon-frontend/src/pages/admin/AdminPostAdmin.jsx
 import React, { useState, useEffect } from 'react';
 import api from '../../api/axios';
+import { API_URL } from '../../config';
 import AdminPostEditor from '../../components/AdminPostEditor';
 import AdminPostList from '../../components/AdminPostList';
 import MobileUploadModal from '../../components/MobileUploadModal';
@@ -12,7 +13,6 @@ const AdminPostAdmin = ({ posts, fetchPosts, activeTab, setActiveTab }) => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const POSTS_PER_PAGE = 9;
 
-  // 탭 변경 시 페이지 1로 초기화 및 데이터 리페치
   useEffect(() => {
     setPostPage(1);
     fetchPosts();
@@ -21,10 +21,10 @@ const AdminPostAdmin = ({ posts, fetchPosts, activeTab, setActiveTab }) => {
   const totalPostPages = Math.ceil((posts || []).length / POSTS_PER_PAGE);
   const currentPosts = (posts || []).slice((postPage - 1) * POSTS_PER_PAGE, postPage * POSTS_PER_PAGE);
 
-  // 🚀 [수정] 모바일 전용 초고속 사진/글 업로드 API 호출 함수
-  // ✨ 의뢰업체명 / 작업지주소·좌표 / 작업년도·월 / 키워드 / 추가 첨부파일까지 함께 전송
+  // 🔑 모바일 업로드 시 이미지 파일이 항상 첫 번째(썸네일)로 오도록 정렬하여 전송
   const handleMobileUpload = async ({
-    file,
+    files,
+    title,
     content,
     clientName,
     workYear,
@@ -34,23 +34,33 @@ const AdminPostAdmin = ({ posts, fetchPosts, activeTab, setActiveTab }) => {
     workLng,
     keywords,
     additionalFiles,
+    thumbnailUrl, // ✨ [신규]
   }) => {
     try {
       const formData = new FormData();
 
-      // 대표 미디어(사진/영상)
-      if (file) formData.append('files', file, file.name || 'mobile-upload.jpg');
+      if (files && files.length > 0) {
+        const sortedFiles = [...files].sort((a, b) => {
+          const isAImage = a.type?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(a.name || '');
+          const isBImage = b.type?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(b.name || '');
+          if (isAImage && !isBImage) return -1;
+          if (!isAImage && isBImage) return 1;
+          return 0;
+        });
 
-      // ✨ [신규] 추가 첨부파일도 같은 files 필드로 함께 전송
+        sortedFiles.forEach(f => {
+          formData.append('files', f, f.name || 'mobile-upload.jpg');
+        });
+      }
+
       if (additionalFiles && additionalFiles.length > 0) {
         additionalFiles.forEach(f => formData.append('files', f, f.name));
       }
 
-      formData.append('content', content);
-      formData.append('title', content.length > 15 ? content.substring(0, 15) + '...' : content || '모바일 업로드');
+      formData.append('content', content || '');
+      formData.append('title', title || (content.length > 15 ? content.substring(0, 15) + '...' : '포트폴리오'));
       formData.append('category', activeTab || '현장사진');
 
-      // ✨ [신규] 의뢰업체명 / 작업지 주소·좌표 / 작업년도·월 / 키워드
       formData.append('clientName', clientName || '');
       formData.append('workAddress', workAddress || '');
       if (workLat != null) formData.append('workLat', String(workLat));
@@ -59,33 +69,48 @@ const AdminPostAdmin = ({ posts, fetchPosts, activeTab, setActiveTab }) => {
       if (workMonth) formData.append('workMonth', workMonth);
       formData.append('keywords', JSON.stringify(keywords || []));
 
-      // 인터셉터가 토큰을 알아서 넣어주므로, 여기서는 파일 타입 헤더만 추가하면 됩니다.
-      await api.post('/posts', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      // ✨ [신규] 모바일에서 명시적으로 지정한 썸네일 URL 전달
+      if (thumbnailUrl) formData.append('thumbnailUrl', thumbnailUrl);
 
-      alert('모바일 업로드가 성공적으로 완료되었습니다! 🎉');
+      if (editingPost) {
+        await api.patch(`/posts/${editingPost.id}`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        alert('포트폴리오가 성공적으로 수정되었습니다! 🎉');
+      } else {
+        await api.post('/posts', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        alert('포트폴리오가 성공적으로 등록되었습니다! 🎉');
+      }
       
-      // 업로드 성공 후 모달 닫기 및 리스트 새로고침
       setIsUploadModalOpen(false);
+      setEditingPost(null);
       fetchPosts(); 
     } catch (error) {
-      console.error('모바일 업로드 실패:', error);
-      alert('업로드 실패: ' + (error.response?.data?.message || '권한을 확인하세요.'));
+      console.error('포트폴리오 저장 실패:', error);
+      alert('처리 실패: ' + (error.response?.data?.message || '권한을 확인하세요.'));
     }
   };
 
   return (
-    <div className="max-w-12xl mx-auto animate-fadeIn relative">
+    <div className="max-w-12xl mx-auto animate-fadeIn relative space-y-6">
       
-      {/* 🔄 [1:1 대칭 매칭] 그리드 너비 6:6 분할 및 높이 h-[850px] 락업 */}
+      <div className="flex xl:hidden justify-between items-center bg-white/80 backdrop-blur-md p-4 rounded-2xl border border-slate-200/60 shadow-sm">
+        <div className="text-xs font-bold text-slate-500">
+          현재 카테고리: <span className="text-blue-500 font-black">{activeTab}</span>
+        </div>
+        <button
+          onClick={() => { setEditingPost(null); setIsUploadModalOpen(true); }}
+          className="bg-neutral-900 text-white hover:bg-blue-500 text-xs font-bold px-4 py-2.5 rounded-xl shadow-md transition cursor-pointer flex items-center gap-1.5 active:scale-95"
+        >
+          <span>✍️</span> 새 글쓰기
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        
-        {/* 👈 좌측: 콘텐츠 목록 카드 */}
         <div className="bg-white/80 backdrop-blur-xl p-6 md:p-10 rounded-[2.5rem] shadow-[0_30px_70px_rgba(0,0,0,0.02)] border border-white/70 flex flex-col justify-between h-[85vh] transition-all duration-500">
-          
           <div>
-            {/* 카테고리 바 영역 */}
             <div className="mb-6 flex justify-center sm:justify-start">
               <div className="bg-slate-200/50 backdrop-blur-sm p-1.5 rounded-2xl border border-white/60 flex gap-1 shadow-inner w-full sm:w-auto">
                 {['현장사진', '공사실적', '보유장비'].map(tab => {
@@ -94,7 +119,6 @@ const AdminPostAdmin = ({ posts, fetchPosts, activeTab, setActiveTab }) => {
                     <button 
                       key={tab} 
                       onClick={() => setActiveTab(tab)} 
-                      // 🔑 활성화 시 기존 다크 스킨에서 명품 무드의 bg-blue-400 컬러 플레이로 변경 조치
                       className={`flex-1 sm:flex-none px-5 py-2 rounded-xl text-xs font-bold transition-all duration-300 cursor-pointer whitespace-nowrap ${
                         isTabActive 
                           ? 'bg-blue-400 text-white shadow-lg shadow-blue-400/20 scale-[1.02]' 
@@ -109,11 +133,15 @@ const AdminPostAdmin = ({ posts, fetchPosts, activeTab, setActiveTab }) => {
             </div>
           </div>
 
-          {/* 📜 스크롤이 구동되는 리스트 순수 본문 존 */}
           <div className="overflow-y-auto pr-2 custom-scrollbar flex-1 mb-4">
             <AdminPostList 
               posts={currentPosts} 
-              onEdit={(post) => { setEditingPost(post); }} 
+              onEdit={(post) => { 
+                setEditingPost(post); 
+                if (window.innerWidth < 1280) {
+                  setIsUploadModalOpen(true);
+                }
+              }} 
               onDelete={async (id) => { 
                 if(confirm('삭제하시겠습니까?')) { 
                   await api.delete(`/posts/${id}`); 
@@ -123,14 +151,12 @@ const AdminPostAdmin = ({ posts, fetchPosts, activeTab, setActiveTab }) => {
             />
           </div>
 
-          {/* 하단 페이징 제어판 */}
           <div className="pt-4 border-t border-slate-100/60">
             <Pagination currentPage={postPage} totalPages={totalPostPages} onPageChange={setPostPage} />
           </div>
         </div>
 
-        {/* 👉 우측: 에디터 폼 컴포넌트 박스 */}
-        <div className="bg-white/80 backdrop-blur-xl p-6 md:p-10 rounded-[2.5rem] shadow-[0_30px_70px_rgba(0,0,0,0.02)] border border-white/70 h-[85vh] overflow-y-auto custom-scrollbar transition-all duration-500">
+        <div className="hidden xl:flex bg-white/80 backdrop-blur-xl p-6 md:p-10 rounded-[2.5rem] shadow-[0_30px_70px_rgba(0,0,0,0.02)] border border-white/70 h-[85vh] overflow-y-auto custom-scrollbar flex-col transition-all duration-500">
           <AdminPostEditor 
             editingPost={editingPost} 
             onCancel={() => setEditingPost(null)} 
@@ -139,18 +165,19 @@ const AdminPostAdmin = ({ posts, fetchPosts, activeTab, setActiveTab }) => {
         </div>
       </div>
 
-      {/* 🚀 콘텐츠 관리용 모바일 플로팅 메뉴 (FAB) & 업로드 모달 */}
       <button
-        onClick={() => setIsUploadModalOpen(true)}
-        className="fixed bottom-8 right-8 md:bottom-12 md:right-12 w-14 h-14 md:w-16 md:h-16 bg-neutral-900 text-white rounded-full shadow-[0_10px_25px_rgba(0,0,0,0.3)] flex items-center justify-center text-3xl font-light hover:scale-105 active:scale-95 transition-transform z-[150]"
+        onClick={() => { setEditingPost(null); setIsUploadModalOpen(true); }}
+        className="hidden xl:flex fixed bottom-12 right-12 w-16 h-16 bg-neutral-900 text-white rounded-full shadow-[0_10px_25px_rgba(0,0,0,0.3)] items-center justify-center text-3xl font-light hover:scale-105 active:scale-95 transition-transform z-[150] cursor-pointer"
+        title="새 콘텐츠 등록"
       >
         +
       </button>
 
       <MobileUploadModal 
         isOpen={isUploadModalOpen} 
-        onClose={() => setIsUploadModalOpen(false)} 
+        onClose={() => { setIsUploadModalOpen(false); setEditingPost(null); }} 
         onUpload={handleMobileUpload}
+        editingPost={editingPost}
       />
       
     </div>
