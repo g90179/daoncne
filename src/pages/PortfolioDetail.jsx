@@ -5,7 +5,7 @@ import { Helmet } from 'react-helmet-async';
 import api from '../api/axios';
 import { API_URL } from '../config';
 
-// ✨ [신규] 확장자 기반 파일 타입 아이콘/라벨 매핑
+// 확장자 기반 파일 타입 아이콘/라벨 매핑
 const getFileTypeInfo = (fileName = '', fileUrl = '') => {
   const ext = (fileName.split('.').pop() || fileUrl.split('.').pop() || '').toLowerCase();
 
@@ -28,7 +28,7 @@ const getFileTypeInfo = (fileName = '', fileUrl = '') => {
 };
 
 const PortfolioDetail = () => {
-  const { id } = useParams(); // URL의 :id 값을 가져옵니다
+  const { id } = useParams();
   const navigate = useNavigate();
   const [post, setPost] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,13 +51,11 @@ const PortfolioDetail = () => {
     fetchPost();
   }, [id]);
 
-  // HTML 태그 제거 함수 (Meta Description 용)
   const stripHtml = (html) => {
     const doc = new DOMParser().parseFromString(html, 'text/html');
     return doc.body.textContent || "";
   };
 
-  // ✨ [신규] 이미지·영상·에디터 썸네일을 제외한 일반 첨부파일만 추출
   const attachmentFiles = post?.files?.filter(f =>
     f.type !== 'image' && f.type !== 'video' && f.name !== 'editor_thumbnail'
     && !f.url?.toLowerCase().endsWith('.mp4')
@@ -75,6 +73,35 @@ const PortfolioDetail = () => {
     </button>
   );
 
+  // 🚀 [신규 추가] Axios를 이용한 완벽한 파일 다운로드 핸들러
+  const handleDownload = async (e, file) => {
+    e.preventDefault(); // 기본 링크 이동(404 페이지) 차단
+    try {
+      // 1. api 인스턴스를 통해 이진 데이터(Blob)로 파일을 받아옵니다. (라우팅 완벽 일치)
+      const response = await api.get(`/posts/files/${file.id}/download`, {
+        responseType: 'blob',
+      });
+
+      // 2. 브라우저 메모리에 가상 URL을 생성하여 다운로드를 강제 실행합니다.
+      const blob = new Blob([response.data]);
+      const downloadUrl = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = file.name; // ✨ 원본 한글 파일명을 브라우저에 강제로 지정!
+      document.body.appendChild(link);
+      
+      link.click(); // 다운로드 트리거
+      
+      // 3. 메모리 누수 방지용 정리
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error('파일 다운로드 실패:', error);
+      alert('파일을 다운로드할 수 없습니다. (네트워크 오류 또는 파일 유실)');
+    }
+  };
+
   return (
     <>
       {post && (
@@ -88,7 +115,6 @@ const PortfolioDetail = () => {
 
       <div className="w-full bg-slate-50 min-h-screen text-neutral-900 font-sans antialiased selection:bg-blue-500/10 selection:text-blue-600">
 
-        {/* 🌌 상단 프리미엄 미니멀 헤더 플레이트 */}
         <header className="bg-white border-b border-neutral-200/60 pt-32 pb-10 px-4 md:px-10 text-center relative overflow-hidden">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full pointer-events-none opacity-40">
             <div className="absolute top-12 left-10 w-72 h-72 bg-blue-400/10 rounded-full blur-3xl animate-pulse" />
@@ -105,7 +131,6 @@ const PortfolioDetail = () => {
               다온씨엔이가 진행한 프로젝트와 시공 사례를 소개합니다.
             </p>
 
-            {/* 🧾 정보 + 목록 버튼: 헤더 내부, 설명 문구 하단, 세로 중앙 정렬 */}
             {post && (
               <div className="pt-6 mt-3 border-t border-neutral-100 flex flex-col items-center gap-3">
                 <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-xs">
@@ -130,7 +155,6 @@ const PortfolioDetail = () => {
           </div>
         </header>
 
-        {/* 📄 본문 */}
         <main className="max-w-4xl mx-auto py-8 xl:py-20 px-4 md:px-10">
 
           <div className="bg-white p-8 md:p-12 rounded-[2.5rem] border border-neutral-200/50 shadow-[0_30px_70px_rgba(0,0,0,0.015)] text-left min-h-[500px] flex flex-col justify-start">
@@ -153,20 +177,17 @@ const PortfolioDetail = () => {
               </div>
             ) : (
               <>
-                {/* ✨ [신규] 첨부파일 카드 목록 (본문 위) */}
                 {attachmentFiles.length > 0 && (
                   <div className="mb-8 space-y-2">
                     <h3 className="text-xs font-black text-neutral-400 uppercase tracking-widest mb-3">📎 첨부파일 ({attachmentFiles.length})</h3>
                     {attachmentFiles.map((file, idx) => {
                       const { icon, label } = getFileTypeInfo(file.name, file.url);
                       return (
-                        <a
+                        // 🚀 [수정됨] <a> 태그를 <button>으로 변경하고 handleDownload 함수 연결
+                        <button
                           key={file.id || idx}
-                          href={`${API_URL}/posts/files/${file.id}/download`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          download={file.name}
-                          className="flex items-center gap-4 bg-neutral-50 hover:bg-neutral-100 border border-neutral-100 rounded-2xl px-5 py-3.5 transition-colors group"
+                          onClick={(e) => handleDownload(e, file)}
+                          className="flex items-center gap-4 bg-neutral-50 hover:bg-neutral-100 border border-neutral-100 rounded-2xl px-5 py-3.5 transition-colors group w-full text-left cursor-pointer"
                         >
                           <span className="text-2xl shrink-0">{icon}</span>
                           <div className="min-w-0 flex-1">
@@ -176,7 +197,7 @@ const PortfolioDetail = () => {
                             <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mt-0.5">{label}</p>
                           </div>
                           <span className="text-neutral-300 group-hover:text-blue-400 transition-colors shrink-0 text-lg">↓</span>
-                        </a>
+                        </button>
                       );
                     })}
                   </div>
@@ -190,7 +211,6 @@ const PortfolioDetail = () => {
             )}
           </div>
 
-          {/* 🔙 목록 버튼: 콘텐츠 최하단 */}
           {post && (
             <div className="flex justify-center mt-8">
               <BackButton />
