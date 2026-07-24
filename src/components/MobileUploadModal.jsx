@@ -7,16 +7,28 @@ const MobileUploadModal = ({ isOpen, onClose, onUpload }) => {
   const [fileType, setFileType] = useState(null); // 'image' 또는 'video'
   const [uploadFile, setUploadFile] = useState(null);
   const [content, setContent] = useState('');
+  
+  // 상세 필드 설정 상태
+  const [clientName, setClientName] = useState('');
+  const now = new Date();
+  const [workYear, setWorkYear] = useState(String(now.getFullYear()));
+  const [workMonth, setWorkMonth] = useState(String(now.getMonth() + 1));
+  const [workAddress, setWorkAddress] = useState('');
+  const [workLat, setWorkLat] = useState(null);
+  const [workLng, setWorkLng] = useState(null);
+  const [keywords, setKeywords] = useState([]);
+  const [keywordInput, setKeywordInput] = useState('');
+  const [additionalFiles, setAdditionalFiles] = useState([]);
+
   const [isUploading, setIsUploading] = useState(false);
 
-  // 📸 세 가지 액션을 위한 개별 Ref 생성
   const cameraRef = useRef(null);
   const videoRef = useRef(null);
   const albumRef = useRef(null);
+  const generalFileRef = useRef(null);
 
   if (!isOpen) return null;
 
-  // 파일 선택 및 압축(이미지만) 처리 로직
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -24,15 +36,12 @@ const MobileUploadModal = ({ isOpen, onClose, onUpload }) => {
     const isVideo = file.type.startsWith('video/');
     setFileType(isVideo ? 'video' : 'image');
     
-    // 미리보기 URL 생성
     const previewUrl = URL.createObjectURL(file);
     setPreviewSrc(previewUrl);
 
     if (isVideo) {
-      // 🎥 비디오는 브라우저 이미지 압축을 거치지 않고 원본을 전달합니다.
       setUploadFile(file);
     } else {
-      // 📸 이미지는 초고속 리사이징/압축 진행
       const options = {
         maxSizeMB: 1,
         maxWidthOrHeight: 1920,
@@ -48,16 +57,82 @@ const MobileUploadModal = ({ isOpen, onClose, onUpload }) => {
     }
   };
 
+  const handleAdditionalFileChange = (e) => {
+    setAdditionalFiles(Array.from(e.target.files));
+  };
+
+  const handleAddressSearch = () => {
+    if (!window.daum || !window.daum.Postcode) {
+      alert('주소 검색 스크립트를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
+    new window.daum.Postcode({
+      oncomplete: (data) => {
+        const fullAddress = data.roadAddress || data.jibunAddress || data.address;
+        setWorkAddress(fullAddress);
+
+        if (window.kakao?.maps?.services) {
+          const geocoder = new window.kakao.maps.services.Geocoder();
+          geocoder.addressSearch(fullAddress, (result, status) => {
+            if (status === window.kakao.maps.services.Status.OK && result[0]) {
+              setWorkLat(parseFloat(result[0].y));
+              setWorkLng(parseFloat(result[0].x));
+            } else {
+              setWorkLat(null);
+              setWorkLng(null);
+            }
+          });
+        }
+      }
+    }).open();
+  };
+
+  const handleKeywordKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      addKeyword();
+    } else if (e.key === 'Backspace' && !keywordInput && keywords.length > 0) {
+      setKeywords(prev => prev.slice(0, -1));
+    }
+  };
+
+  const addKeyword = () => {
+    const trimmed = keywordInput.trim().replace(/^#/, '');
+    if (!trimmed) return;
+    if (!keywords.includes(trimmed)) {
+      setKeywords(prev => [...prev, trimmed]);
+    }
+    setKeywordInput('');
+  };
+
+  const removeKeyword = (name) => {
+    setKeywords(prev => prev.filter(k => k !== name));
+  };
+
   const handleSubmit = async () => {
-    if (!uploadFile && !content) {
-      alert('사진(영상)이나 내용을 입력해 주세요.');
+    if (!uploadFile && !content.trim()) {
+      alert('대표 미디어(사진/영상)나 본문 내용을 입력해 주세요.');
       return;
     }
 
+    const finalKeywords = keywordInput.trim()
+      ? [...keywords, keywordInput.trim().replace(/^#/, '')]
+      : keywords;
+
     setIsUploading(true);
-    await onUpload({ file: uploadFile, content });
+    await onUpload({
+      file: uploadFile,
+      content,
+      clientName,
+      workYear,
+      workMonth,
+      workAddress,
+      workLat,
+      workLng,
+      keywords: finalKeywords,
+      additionalFiles,
+    });
     
-    // 초기화 및 닫기
     setIsUploading(false);
     resetForm();
     onClose();
@@ -68,37 +143,47 @@ const MobileUploadModal = ({ isOpen, onClose, onUpload }) => {
     setUploadFile(null);
     setFileType(null);
     setContent('');
+    setClientName('');
+    // ✨ [변경] 초기화 시에도 현재 날짜로 복귀
+    const now = new Date();
+    setWorkYear(String(now.getFullYear()));
+    setWorkMonth(String(now.getMonth() + 1));
+    setWorkAddress('');
+    setWorkLat(null);
+    setWorkLng(null);
+    setKeywords([]);
+    setKeywordInput('');
+    setAdditionalFiles([]);
     if (cameraRef.current) cameraRef.current.value = '';
     if (videoRef.current) videoRef.current.value = '';
     if (albumRef.current) albumRef.current.value = '';
+    if (generalFileRef.current) generalFileRef.current.value = '';
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-white flex flex-col md:max-w-md md:mx-auto md:shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-[9999] bg-white flex flex-col md:max-w-xl md:mx-auto md:shadow-2xl overflow-hidden animate-fadeIn">
       
-      {/* 📱 인스타그램 스타일 헤더 */}
+      {/* 헤더 */}
       <div className="flex justify-between items-center px-4 h-14 border-b border-slate-200 bg-white shrink-0">
-        <button onClick={() => { resetForm(); onClose(); }} className="text-slate-900 text-2xl font-light">
+        <button onClick={() => { resetForm(); onClose(); }} className="text-slate-900 text-2xl font-light cursor-pointer">
           ✕
         </button>
-        <h2 className="text-base font-bold text-slate-900">새 포트폴리오</h2>
+        <h2 className="text-base font-bold text-slate-900">새 포트폴리오 등록</h2>
         <button 
           onClick={handleSubmit} 
           disabled={isUploading}
-          className={`text-base font-bold transition-colors ${isUploading ? 'text-slate-400' : 'text-blue-500 hover:text-blue-600'}`}
+          className={`text-base font-bold transition-colors cursor-pointer ${isUploading ? 'text-slate-400' : 'text-blue-500 hover:text-blue-600'}`}
         >
           {isUploading ? '업로드 중...' : '공유'}
         </button>
       </div>
 
-      {/* 📝 콘텐츠 영역 */}
-      <div className="flex-1 overflow-y-auto bg-slate-50 flex flex-col">
+      {/* 🚀 [수정됨] min-h-0 추가로 모바일 브라우저 스크롤 영역 정상화 */}
+      <div className="flex-1 min-h-0 overflow-y-auto bg-slate-50 p-4 space-y-4 custom-scrollbar text-left">
         
-        {/* 미디어 표시 또는 버튼 영역 */}
-        <div className="w-full aspect-square bg-slate-100 relative overflow-hidden flex flex-col items-center justify-center">
-          
+        {/* 미디어 선택 영역 */}
+        <div className="w-full h-40 bg-slate-100 relative rounded-2xl overflow-hidden flex flex-col items-center justify-center border border-slate-200 shadow-inner shrink-0">
           {previewSrc ? (
-            /* 미리보기 화면 */
             <div className="relative w-full h-full">
               {fileType === 'video' ? (
                 <video src={previewSrc} controls className="w-full h-full object-contain bg-black" playsInline />
@@ -107,73 +192,167 @@ const MobileUploadModal = ({ isOpen, onClose, onUpload }) => {
               )}
               <button 
                 onClick={resetForm}
-                className="absolute top-4 right-4 bg-black/60 backdrop-blur-sm text-white rounded-full w-9 h-9 flex items-center justify-center text-sm shadow-lg hover:bg-black/80 transition-colors"
+                className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm text-white rounded-full w-8 h-8 flex items-center justify-center text-xs shadow-lg hover:bg-black/80 transition-colors cursor-pointer"
               >
                 ✕
               </button>
             </div>
           ) : (
-            /* 3분할 선택 버튼 화면 */
-            <div className="flex flex-col gap-4 w-full px-8">
+            <div className="flex items-center justify-center gap-3 w-full px-4">
               <button 
                 onClick={() => cameraRef.current.click()}
-                className="flex items-center gap-4 bg-white px-6 py-4 rounded-2xl shadow-sm border border-slate-200 hover:bg-slate-50 transition-all active:scale-95"
+                className="flex-1 flex flex-col items-center justify-center gap-1.5 bg-white p-3 rounded-xl shadow-sm border border-slate-200 hover:bg-slate-50 transition-all active:scale-95 cursor-pointer"
               >
-                <span className="text-3xl">📸</span>
-                <span className="font-bold text-slate-700 text-lg">사진 바로 찍기</span>
+                <span className="text-2xl">📸</span>
+                <span className="font-bold text-slate-700 text-xs">사진 촬영</span>
               </button>
 
               <button 
                 onClick={() => videoRef.current.click()}
-                className="flex items-center gap-4 bg-white px-6 py-4 rounded-2xl shadow-sm border border-slate-200 hover:bg-slate-50 transition-all active:scale-95"
+                className="flex-1 flex flex-col items-center justify-center gap-1.5 bg-white p-3 rounded-xl shadow-sm border border-slate-200 hover:bg-slate-50 transition-all active:scale-95 cursor-pointer"
               >
-                <span className="text-3xl">🎥</span>
-                <span className="font-bold text-slate-700 text-lg">영상 바로 찍기</span>
+                <span className="text-2xl">🎥</span>
+                <span className="font-bold text-slate-700 text-xs">영상 촬영</span>
               </button>
 
               <button 
                 onClick={() => albumRef.current.click()}
-                className="flex items-center gap-4 bg-white px-6 py-4 rounded-2xl shadow-sm border border-slate-200 hover:bg-slate-50 transition-all active:scale-95"
+                className="flex-1 flex flex-col items-center justify-center gap-1.5 bg-white p-3 rounded-xl shadow-sm border border-slate-200 hover:bg-slate-50 transition-all active:scale-95 cursor-pointer"
               >
-                <span className="text-3xl">🖼️</span>
-                <span className="font-bold text-slate-700 text-lg">기기 앨범 열기</span>
+                <span className="text-2xl">🖼️</span>
+                <span className="font-bold text-slate-700 text-xs">앨범 선택</span>
               </button>
             </div>
           )}
 
-          {/* 💡 핵심: 3개의 분리된 숨김 input 속성 */}
-          <input 
-            type="file" 
-            ref={cameraRef}
-            accept="image/*" 
-            capture="environment" // 사진용 카메라 강제
-            className="hidden" 
-            onChange={handleFileChange}
-          />
-          <input 
-            type="file" 
-            ref={videoRef}
-            accept="video/*" 
-            capture="environment" // 비디오용 카메라 강제
-            className="hidden" 
-            onChange={handleFileChange}
-          />
-          <input 
-            type="file" 
-            ref={albumRef}
-            accept="image/*,video/*" // 캡처 속성 없음 (앨범 팝업 유도)
-            className="hidden" 
-            onChange={handleFileChange}
+          <input type="file" ref={cameraRef} accept="image/*" capture="environment" className="hidden" onChange={handleFileChange} />
+          <input type="file" ref={videoRef} accept="video/*" capture="environment" className="hidden" onChange={handleFileChange} />
+          <input type="file" ref={albumRef} accept="image/*,video/*" className="hidden" onChange={handleFileChange} />
+        </div>
+
+        {/* 메인 텍스트 내용 */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/60 shadow-sm space-y-1.5">
+          <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">포트폴리오 본문 내용 *</label>
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="현장의 생생한 소식이나 설명을 작성해 주세요..."
+            className="w-full h-20 p-3 text-sm resize-none outline-none bg-slate-50/50 rounded-xl border border-slate-100 text-slate-700 placeholder-slate-400"
           />
         </div>
 
-        {/* 텍스트 입력 영역 */}
-        <textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="현장의 생생한 소식이나 설명을 작성해 주세요..."
-          className="w-full flex-1 p-5 text-base resize-none outline-none bg-white text-slate-700 placeholder-slate-400"
-        />
+        {/* 추가 현장 정보 입력 카드 */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm space-y-4">
+          <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2">추가 현장 정보 입력</h3>
+          
+          {/* 의뢰업체명 */}
+          <div className="space-y-1.5">
+            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">의뢰업체명 <span className="normal-case font-medium text-slate-300">(선택)</span></label>
+            <input
+              type="text"
+              placeholder="예: 다온씨엔이"
+              value={clientName}
+              onChange={(e) => setClientName(e.target.value)}
+              className="w-full bg-slate-50/60 border border-slate-200/50 rounded-xl px-4 py-3 text-sm outline-none focus:bg-white focus:border-blue-400 transition"
+            />
+          </div>
+
+          {/* 작업년도/월 */}
+          <div className="space-y-1.5">
+            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">작업년도/월 <span className="normal-case font-medium text-slate-300">(선택)</span></label>
+            <div className="flex gap-2">
+              <select
+                value={workYear}
+                onChange={(e) => setWorkYear(e.target.value)}
+                className="flex-1 bg-slate-50/60 border border-slate-200/50 rounded-xl px-3 py-3 text-sm outline-none focus:bg-white focus:border-blue-400 transition cursor-pointer"
+              >
+                <option value="">년도 선택</option>
+                {Array.from({ length: 15 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                  <option key={y} value={y}>{y}년</option>
+                ))}
+              </select>
+              <select
+                value={workMonth}
+                onChange={(e) => setWorkMonth(e.target.value)}
+                className="flex-1 bg-slate-50/60 border border-slate-200/50 rounded-xl px-3 py-3 text-sm outline-none focus:bg-white focus:border-blue-400 transition cursor-pointer"
+              >
+                <option value="">월 선택</option>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                  <option key={m} value={m}>{m}월</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* 작업지 주소 */}
+          <div className="space-y-1.5">
+            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">작업지 주소 <span className="normal-case font-medium text-slate-300">(선택)</span></label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                readOnly
+                placeholder="주소 검색 버튼을 눌러주세요"
+                value={workAddress}
+                className="flex-1 bg-slate-50/60 border border-slate-200/50 rounded-xl px-4 py-3 text-sm outline-none"
+              />
+              <button
+                type="button"
+                onClick={handleAddressSearch}
+                className="shrink-0 bg-slate-900 text-white text-xs font-bold px-4 py-3 rounded-xl hover:bg-blue-500 transition cursor-pointer"
+              >
+                주소 검색
+              </button>
+            </div>
+            {workLat != null && workLng != null && (
+              <p className="text-[10px] text-blue-400 font-mono pl-1">📍 좌표 매칭 완료 ({workLat.toFixed(4)}, {workLng.toFixed(4)})</p>
+            )}
+          </div>
+
+          {/* 작업 키워드 */}
+          <div className="space-y-1.5">
+            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">작업 키워드 <span className="normal-case font-medium text-slate-300">(선택 · 엔터로 추가)</span></label>
+            <div className="flex flex-wrap items-center gap-1.5 bg-slate-50/60 border border-slate-200/50 rounded-xl px-3 py-2.5 focus-within:bg-white focus-within:border-blue-400 transition">
+              {keywords.map(kw => (
+                <span key={kw} className="flex items-center gap-1 bg-blue-50 text-blue-600 text-xs font-bold pl-2.5 pr-1.5 py-1 rounded-full border border-blue-100">
+                  #{kw}
+                  <button type="button" onClick={() => removeKeyword(kw)} className="w-3.5 h-3.5 rounded-full bg-white hover:bg-rose-50 hover:text-rose-500 flex items-center justify-center text-[9px] font-black cursor-pointer">✕</button>
+                </span>
+              ))}
+              <input
+                type="text"
+                placeholder={keywords.length === 0 ? '예: 크레인작업 (엔터)' : '키워드 추가...'}
+                value={keywordInput}
+                onChange={(e) => setKeywordInput(e.target.value)}
+                onKeyDown={handleKeywordKeyDown}
+                onBlur={addKeyword}
+                className="flex-1 min-w-[100px] bg-transparent text-sm outline-none py-1"
+              />
+            </div>
+          </div>
+
+          {/* 파일 첨부 */}
+          <div className="space-y-1.5 pt-2">
+            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">추가 첨부파일 <span className="normal-case font-medium text-slate-300">(선택)</span></label>
+            <input 
+              type="file"
+              multiple
+              ref={generalFileRef}
+              onChange={handleAdditionalFileChange}
+              className="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-slate-900 file:text-white file:hover:bg-blue-400 file:transition file:cursor-pointer"
+            />
+            {additionalFiles.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {additionalFiles.map((f, idx) => (
+                  <span key={idx} className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2.5 py-1 rounded-lg">
+                    📎 {f.name}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+        </div>
+
       </div>
     </div>
   );

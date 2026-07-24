@@ -72,14 +72,20 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
       setWorkLat(editingPost.workLat ?? null);
       setWorkLng(editingPost.workLng ?? null);
       setKeywords(editingPost.keywords?.map(pk => pk.keyword?.name).filter(Boolean) || []);
+      setKeywordInput('');
+
+      // ✨ [변경] 수정 모드: 기존 값 그대로, 값이 없으면 빈칸 유지 (현재 날짜로 덮어쓰지 않음)
       setWorkYear(editingPost.workYear != null ? String(editingPost.workYear) : '');
       setWorkMonth(editingPost.workMonth != null ? String(editingPost.workMonth) : '');
-      setKeywordInput('');
     } else {
       setTitle(''); setContent(''); setSelectedFiles([]); setExistingFiles([]); setDeletedFileIds([]);
       setClientName(''); setWorkAddress(''); setWorkLat(null); setWorkLng(null);
       setKeywords([]); setKeywordInput('');
-      setWorkYear(''); setWorkMonth('');
+
+      // ✨ [변경] 신규 작성 모드: 작업년도/월 기본값을 현재 날짜로 설정
+      const now = new Date();
+      setWorkYear(String(now.getFullYear()));
+      setWorkMonth(String(now.getMonth() + 1));
     }
   }, [editingPost]);
 

@@ -21,15 +21,43 @@ const AdminPostAdmin = ({ posts, fetchPosts, activeTab, setActiveTab }) => {
   const totalPostPages = Math.ceil((posts || []).length / POSTS_PER_PAGE);
   const currentPosts = (posts || []).slice((postPage - 1) * POSTS_PER_PAGE, postPage * POSTS_PER_PAGE);
 
-  // 🚀 [추가] 모바일 전용 초고속 사진/글 업로드 API 호출 함수
-  const handleMobileUpload = async ({ file, content }) => {
+  // 🚀 [수정] 모바일 전용 초고속 사진/글 업로드 API 호출 함수
+  // ✨ 의뢰업체명 / 작업지주소·좌표 / 작업년도·월 / 키워드 / 추가 첨부파일까지 함께 전송
+  const handleMobileUpload = async ({
+    file,
+    content,
+    clientName,
+    workYear,
+    workMonth,
+    workAddress,
+    workLat,
+    workLng,
+    keywords,
+    additionalFiles,
+  }) => {
     try {
       const formData = new FormData();
+
+      // 대표 미디어(사진/영상)
       if (file) formData.append('files', file, file.name || 'mobile-upload.jpg');
-      
+
+      // ✨ [신규] 추가 첨부파일도 같은 files 필드로 함께 전송
+      if (additionalFiles && additionalFiles.length > 0) {
+        additionalFiles.forEach(f => formData.append('files', f, f.name));
+      }
+
       formData.append('content', content);
       formData.append('title', content.length > 15 ? content.substring(0, 15) + '...' : content || '모바일 업로드');
       formData.append('category', activeTab || '현장사진');
+
+      // ✨ [신규] 의뢰업체명 / 작업지 주소·좌표 / 작업년도·월 / 키워드
+      formData.append('clientName', clientName || '');
+      formData.append('workAddress', workAddress || '');
+      if (workLat != null) formData.append('workLat', String(workLat));
+      if (workLng != null) formData.append('workLng', String(workLng));
+      if (workYear) formData.append('workYear', workYear);
+      if (workMonth) formData.append('workMonth', workMonth);
+      formData.append('keywords', JSON.stringify(keywords || []));
 
       // 인터셉터가 토큰을 알아서 넣어주므로, 여기서는 파일 타입 헤더만 추가하면 됩니다.
       await api.post('/posts', formData, {
