@@ -92,7 +92,7 @@ const Footer = ({ companyInfo, isMapScriptLoaded, isLoggedIn, setShowLoginModal 
     <footer className="w-full bg-white border-t border-neutral-200 relative">
       
       {/* 🗺️ [레이어 1] 카카오맵 백그라운드 */}
-      <div className="w-full h-[300px] relative z-0">
+      <div className="w-full h-[520px] md:h-[450px] lg:h-[320px] relative z-0">
         {hasCoords ? (
           <div ref={mapContainerRef} className="w-full h-full" />
         ) : (

@@ -15,17 +15,21 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// 무한 팝업 방지용 전역 플래그
+let isAlertShown = false;
+
 // 응답 인터셉터: 예외 처리 로직 강화
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // 1. 401 에러가 발생한 요청의 URL이 공개 경로인지 확인 (예외 처리)
-    const publicRoutes = ['/quotes/init', '/auth/login', '/auth/refresh'];
-    const isPublicRoute = publicRoutes.some(route => originalRequest.url.includes(route));
+    // 1. 401 에러가 발생한 요청의 URL이 공개 경로인지 확인
+    // 🔑 '/visitors/log' 등 방문자 자동 요청 API를 예외 경로에 추가
+    const publicRoutes = ['/quotes/init', '/auth/login', '/auth/refresh', '/visitors/log'];
+    const isPublicRoute = publicRoutes.some(route => originalRequest.url?.includes(route));
 
-    // 공개 경로에서 발생한 401은 인터셉터에서 차단하지 않고 그대로 반환 (컴포넌트의 catch로 전달)
+    // 공개 경로에서 발생한 401은 인터셉터에서 차단하지 않고 조용히 무시 (컴포넌트로 에러 전달)
     if (error.response?.status === 401 && isPublicRoute) {
       return Promise.reject(error);
     }
@@ -33,10 +37,16 @@ api.interceptors.response.use(
     // 2. 일반적인 인증 만료 로직 (토큰 갱신 시도)
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-      try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (!refreshToken) throw new Error('No refresh token');
+      
+      const refreshToken = localStorage.getItem('refreshToken');
+      
+      // 🔑 리프레시 토큰조차 없다면 (애초에 비로그인 사용자라면) 팝업 띄우지 않고 조용히 거절하여 무한 루프 방지
+      if (!refreshToken) {
+        localStorage.clear();
+        return Promise.reject(error);
+      }
 
+      try {
         const res = await axios.post(`${API_URL}/auth/refresh`, { refreshToken });
         const newAccessToken = res.data.access_token;
         localStorage.setItem('token', newAccessToken);
@@ -45,8 +55,18 @@ api.interceptors.response.use(
         return api(originalRequest); // 기존 요청 재시도
       } catch (err) {
         localStorage.clear();
-        alert('인증이 만료되었습니다. 다시 로그인해 주세요.');
-        window.location.href = '/';
+        
+        // 🔑 경고창이 한 번만 뜨도록 플래그 처리
+        if (!isAlertShown) {
+          isAlertShown = true;
+          alert('인증이 만료되었습니다. 다시 로그인해 주세요.');
+          
+          // 현재 경로가 메인 페이지가 아닐 때만 리다이렉트 (메인 페이지에서의 무한 새로고침 방지)
+          if (window.location.pathname !== '/') {
+            window.location.href = '/';
+          }
+        }
+        return Promise.reject(err);
       }
     }
     
