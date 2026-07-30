@@ -128,6 +128,9 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const resizeObserverRef = useRef(null);
 
+  // 🚀 드래그 상태를 추적하여 클릭 이벤트와 충돌하지 않도록 처리
+  const lastDragRef = useRef(false);
+
   const containerRef = useCallback((node) => {
     mapNodeRef.current = node; 
     if (resizeObserverRef.current) {
@@ -293,6 +296,8 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
 
   const handleDragStart = (key, clientX, clientY, e) => {
     e.stopPropagation();
+    lastDragRef.current = false; // 🚀 클릭 여부 판별 초기화
+    
     const current = tooltipPositions[key] || { x: 0, y: -60 };
     draggingRef.current = { key, startX: clientX, startY: clientY, initialX: current.x, initialY: current.y };
     setDraggingKey(key);
@@ -304,6 +309,8 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
   };
 
   const handleMove = (clientX, clientY) => {
+    lastDragRef.current = true; // 🚀 이동이 발생했으므로 단순 클릭이 아님을 마킹
+    
     const { key, startX, startY, initialX, initialY } = draggingRef.current;
     if (!key) return;
     
@@ -417,7 +424,7 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
             다온씨엔이 전국 시공 현장
           </h2>
           <p className="text-sm text-neutral-500 font-medium">
-            전국 곳곳에서 진행된 프로젝트 위치를 확인해보세요. 말풍선은 드래그로 옮길 수 있어요.
+            전국 곳곳에서 진행된 프로젝트 위치를 확인해보세요. 말풍선을 클릭해 현장으로 이동할 수 있습니다.
           </p>
           {isLoggedIn && (
             <button
@@ -464,20 +471,24 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
                     </svg>
 
                     <div
-                      className={`absolute pointer-events-auto cursor-move w-max ${isDraggingThis ? '' : 'transition-transform duration-150 ease-out'}`}
+                      className={`absolute pointer-events-auto cursor-pointer w-max ${isDraggingThis ? '' : 'transition-transform duration-150 ease-out'}`}
                       style={{ transform: `translate(${pos.x}px, ${pos.y}px) translate(-50%, -50%)` }}
                       onMouseDown={(e) => handleDragStart(loc.key, e.clientX, e.clientY, e)}
                       onTouchStart={(e) => handleDragStart(loc.key, e.touches[0].clientX, e.touches[0].clientY, e)}
+                      // 🚀 클릭 시 포스팅으로 이동 (드래그하지 않았을 때만 실행)
+                      onClick={() => {
+                        if (!lastDragRef.current && loc.posts[0]) {
+                          navigate(`/portfolio/${loc.posts[0].id}`);
+                        }
+                      }}
                     >
-                      {/* 🚀 [변경됨] 모바일에서 썸네일 존재 시 말풍선을 동그란 원형(rounded-full)으로 만듭니다 */}
-                      <div className={`bg-[#fffffff5] ${isMobile && thumbUrl ? 'p-1 rounded-full' : 'p-2 rounded-sm'} border border-neutral-200/70 shadow-lg max-w-[200px] flex items-center ${isMobile && thumbUrl ? 'gap-0' : 'gap-2'} select-none`}
+                      <div className={`bg-[#fffffff5] hover:bg-blue-50 transition-colors ${isMobile && thumbUrl ? 'p-1 rounded-full' : 'p-2 rounded-sm'} border border-neutral-200/70 shadow-lg max-w-[200px] flex items-center ${isMobile && thumbUrl ? 'gap-0' : 'gap-2'} select-none hover:scale-105`}
                       style={{ wordBreak : 'auto-phrase' }}>
                         
                         {thumbUrl && (
                           <img 
                             src={thumbUrl} 
                             alt="" 
-                            // 🚀 [변경됨] 이미지 역시 완벽한 원형(rounded-full)으로 조정
                             className={`${isMobile ? 'w-10 h-10 rounded-full' : 'w-8 h-8 rounded-md'} object-cover flex-shrink-0 bg-white/20 shadow-sm`}
                           />
                         )}
@@ -516,16 +527,22 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
                   style={{ left: `${loc.leftPct}%`, top: `${loc.topPct}%`, transform: 'translate(-50%, -50%)' }}
                 >
                   {!isOpen && (
-                    <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-150 z-30">
-                      
-                      {/* 🚀 [변경됨] 울릉도/독도 영역 말풍선도 모바일 시 원형(rounded-full) 적용 */}
-                      <div className={`bg-neutral-900 text-white ${isMobile && thumbUrl ? 'p-1 rounded-full' : 'p-1.5 rounded-lg'} shadow-lg max-w-[150px] flex items-center ${isMobile && thumbUrl ? 'gap-0' : 'gap-1.5'} select-none`}>
+                    <div 
+                      className="pointer-events-auto cursor-pointer absolute bottom-full left-1/2 -translate-x-1/2 mb-1 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-150 z-30"
+                      // 🚀 울릉도/독도 영역 말풍선 클릭 시 상세 이동
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (loc.posts[0]) {
+                          navigate(`/portfolio/${loc.posts[0].id}`);
+                        }
+                      }}
+                    >
+                      <div className={`bg-neutral-900 hover:bg-neutral-800 transition-colors text-white ${isMobile && thumbUrl ? 'p-1 rounded-full' : 'p-1.5 rounded-lg'} shadow-lg max-w-[150px] flex items-center ${isMobile && thumbUrl ? 'gap-0' : 'gap-1.5'} select-none`}>
                         
                         {thumbUrl && (
                           <img 
                             src={thumbUrl} 
                             alt="" 
-                            // 🚀 [변경됨] 내부 이미지 원형 적용
                             className={`${isMobile ? 'w-8 h-8 rounded-full' : 'w-6 h-6 rounded-md'} object-cover flex-shrink-0 bg-neutral-800`}
                           />
                         )}
