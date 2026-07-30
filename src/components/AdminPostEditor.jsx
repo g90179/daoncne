@@ -29,15 +29,15 @@ import { API_URL } from '../config';
 
 const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState('현장사진');
+  const [category, setCategory] = useState('공사실적'); // ✨ 기본값을 공사실적으로 변경
   const [content, setContent] = useState('');
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [existingFiles, setExistingFiles] = useState([]);
   const [deletedFileIds, setDeletedFileIds] = useState([]);
+  
+  // 🏢 공사실적 전용 상태
   const [workYear, setWorkYear] = useState('');
   const [workMonth, setWorkMonth] = useState('');
-
-  // 의뢰업체명 / 작업지 주소 / 키워드
   const [clientName, setClientName] = useState('');
   const [workAddress, setWorkAddress] = useState('');
   const [workLat, setWorkLat] = useState(null);
@@ -45,10 +45,16 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
   const [keywords, setKeywords] = useState([]);
   const [keywordInput, setKeywordInput] = useState('');
 
-  // ✨ [신규] 에디터 전체화면 상태 관리
+  // 🚜 보유장비 전용 상태
+  const [specifications, setSpecifications] = useState('');
+  const [quantity, setQuantity] = useState('');
+  const [mappingYear, setMappingYear] = useState('');
+  const [managementGrade, setManagementGrade] = useState('양호'); // ✨ 기본값 '양호'로 변경
+
+  // ✨ 에디터 전체화면 상태 관리
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // ✨ [신규] 전체화면일 때 배경 스크롤 방지
+  // ✨ 전체화면일 때 배경 스크롤 방지
   useEffect(() => {
     if (isFullscreen) {
       document.body.style.overflow = 'hidden';
@@ -60,32 +66,40 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
 
   useEffect(() => {
     if (editingPost) {
-      setTitle(editingPost.title);
-      setCategory(editingPost.category);
-      setContent(editingPost.content);
+      setTitle(editingPost.title || '');
+      setCategory(editingPost.category || '공사실적');
+      setContent(editingPost.content || '');
       setSelectedFiles([]);
       setExistingFiles(editingPost.files?.filter(f => f.name !== 'editor_thumbnail') || []);
       setDeletedFileIds([]);
 
+      // 공사실적 세팅
       setClientName(editingPost.clientName || '');
       setWorkAddress(editingPost.workAddress || '');
       setWorkLat(editingPost.workLat ?? null);
       setWorkLng(editingPost.workLng ?? null);
       setKeywords(editingPost.keywords?.map(pk => pk.keyword?.name).filter(Boolean) || []);
       setKeywordInput('');
-
-      // ✨ [변경] 수정 모드: 기존 값 그대로, 값이 없으면 빈칸 유지 (현재 날짜로 덮어쓰지 않음)
       setWorkYear(editingPost.workYear != null ? String(editingPost.workYear) : '');
       setWorkMonth(editingPost.workMonth != null ? String(editingPost.workMonth) : '');
+
+      // 보유장비 세팅
+      setSpecifications(editingPost.specifications || '');
+      setQuantity(editingPost.quantity || '');
+      setMappingYear(editingPost.mappingYear || '');
+      setManagementGrade(editingPost.managementGrade || '양호'); // ✨ 기본값 '양호'로 변경
     } else {
       setTitle(''); setContent(''); setSelectedFiles([]); setExistingFiles([]); setDeletedFileIds([]);
+      
+      // 공사실적 초기화
       setClientName(''); setWorkAddress(''); setWorkLat(null); setWorkLng(null);
       setKeywords([]); setKeywordInput('');
-
-      // ✨ [변경] 신규 작성 모드: 작업년도/월 기본값을 현재 날짜로 설정
       const now = new Date();
       setWorkYear(String(now.getFullYear()));
       setWorkMonth(String(now.getMonth() + 1));
+
+      // 보유장비 초기화
+      setSpecifications(''); setQuantity(''); setMappingYear(''); setManagementGrade('양호'); // ✨ 기본값 '양호'로 변경
     }
   }, [editingPost]);
 
@@ -164,14 +178,24 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
     formData.append('category', category);
     formData.append('deletedFileIds', JSON.stringify(deletedFileIds));
 
-    formData.append('clientName', clientName);
-    formData.append('workAddress', workAddress);
-    if (workLat != null) formData.append('workLat', String(workLat));
-    if (workLng != null) formData.append('workLng', String(workLng));
-    formData.append('keywords', JSON.stringify(finalKeywords));
+    // 공사실적 데이터
+    if (category === '공사실적') {
+      formData.append('clientName', clientName);
+      formData.append('workAddress', workAddress);
+      if (workLat != null) formData.append('workLat', String(workLat));
+      if (workLng != null) formData.append('workLng', String(workLng));
+      formData.append('keywords', JSON.stringify(finalKeywords));
+      if (workYear) formData.append('workYear', workYear);
+      if (workMonth) formData.append('workMonth', workMonth);
+    }
 
-    if (workYear) formData.append('workYear', workYear);
-    if (workMonth) formData.append('workMonth', workMonth);
+    // 보유장비 데이터
+    if (category === '보유장비') {
+      formData.append('specifications', specifications);
+      formData.append('quantity', quantity);
+      formData.append('mappingYear', mappingYear);
+      formData.append('managementGrade', managementGrade);
+    }
 
     selectedFiles.forEach(f => formData.append('files', f));
 
@@ -204,9 +228,8 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
             value={category} 
             onChange={e => setCategory(e.target.value)}
           >
-            <option>현장사진</option>
-            <option>공사실적</option>
-            <option>보유장비</option>
+            <option value="공사실적">공사실적</option>
+            <option value="보유장비">보유장비</option>
           </select>
         </div>
 
@@ -231,109 +254,164 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
       <div className="px-1">
         <input 
           className="w-full text-3xl font-bold pb-2 text-[oklch(0.38_0.07_259.56)] placeholder-slate-300 outline-none border-b border-slate-50 focus:border-blue-400/30 transition-all" 
-          placeholder="Untitled" 
+          placeholder="제목을 입력하세요 (Untitled)" 
           value={title} 
           onChange={e => setTitle(e.target.value)} 
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-1">
-        <div className="space-y-1.5">
-          <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">의뢰업체명 <span className="normal-case font-medium text-slate-300">(선택)</span></label>
-          <input
-            className="w-full bg-slate-50/60 border border-slate-200/50 rounded-2xl px-5 py-3 text-sm outline-none focus:bg-white focus:border-blue-400 transition"
-            placeholder="예: 다온씨엔이"
-            value={clientName}
-            onChange={e => setClientName(e.target.value)}
-          />
-        </div>
+      {/* ✨ [동적 변경] 카테고리에 따른 폼 분기 */}
+      {category === '공사실적' && (
+        <div className="animate-fadeIn space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-1">
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">의뢰업체명 <span className="normal-case font-medium text-slate-300">(선택)</span></label>
+              <input
+                className="w-full bg-slate-50/60 border border-slate-200/50 rounded-2xl px-5 py-3 text-sm outline-none focus:bg-white focus:border-blue-400 transition"
+                placeholder="예: 다온씨엔이"
+                value={clientName}
+                onChange={e => setClientName(e.target.value)}
+              />
+            </div>
 
-        <div className="space-y-1.5">
-          <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">작업년도/월 <span className="normal-case font-medium text-slate-300">(선택)</span></label>
-          <div className="flex items-center gap-2">
-            <select
-              className="flex-1 bg-slate-50/60 border border-slate-200/50 rounded-2xl px-4 py-3 text-sm outline-none focus:bg-white focus:border-blue-400 transition cursor-pointer"
-              value={workYear}
-              onChange={e => setWorkYear(e.target.value)}
-            >
-              <option value="">년도</option>
-              {Array.from({ length: 15 }, (_, i) => new Date().getFullYear() - i).map(y => (
-                <option key={y} value={y}>{y}년</option>
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">작업년도/월 <span className="normal-case font-medium text-slate-300">(선택)</span></label>
+              <div className="flex items-center gap-2">
+                <select
+                  className="flex-1 bg-slate-50/60 border border-slate-200/50 rounded-2xl px-4 py-3 text-sm outline-none focus:bg-white focus:border-blue-400 transition cursor-pointer"
+                  value={workYear}
+                  onChange={e => setWorkYear(e.target.value)}
+                >
+                  <option value="">년도</option>
+                  {Array.from({ length: 15 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                    <option key={y} value={y}>{y}년</option>
+                  ))}
+                </select>
+                <select
+                  className="flex-1 bg-slate-50/60 border border-slate-200/50 rounded-2xl px-4 py-3 text-sm outline-none focus:bg-white focus:border-blue-400 transition cursor-pointer"
+                  value={workMonth}
+                  onChange={e => setWorkMonth(e.target.value)}
+                >
+                  <option value="">월</option>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                    <option key={m} value={m}>{m}월</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-1.5 md:col-span-2">
+              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">작업지 주소 <span className="normal-case font-medium text-slate-300">(선택)</span></label>
+              <div className="flex gap-2">
+                <input
+                  className="flex-1 bg-slate-50/60 border border-slate-200/50 rounded-2xl px-5 py-3 text-sm outline-none focus:bg-white focus:border-blue-400 transition"
+                  placeholder="주소 검색 버튼을 눌러주세요"
+                  value={workAddress}
+                  readOnly
+                />
+                <button
+                  type="button"
+                  onClick={handleAddressSearch}
+                  className="shrink-0 bg-slate-900 hover:bg-blue-500 text-white text-xs font-bold px-4 py-3 rounded-2xl transition cursor-pointer"
+                >
+                  주소 검색
+                </button>
+                {workAddress && (
+                  <button
+                    type="button"
+                    onClick={handleClearAddress}
+                    className="shrink-0 bg-slate-100 hover:bg-rose-50 hover:text-rose-500 text-slate-400 text-xs font-bold px-3 py-3 rounded-2xl transition cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              {workLat != null && workLng != null && (
+                <p className="text-[10px] text-blue-400 font-mono pl-1">📍 {workLat.toFixed(6)}, {workLng.toFixed(6)}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="px-1 space-y-1.5">
+            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">작업 키워드 <span className="normal-case font-medium text-slate-300">(선택 · 복수 등록 가능)</span></label>
+            <div className="flex flex-wrap items-center gap-2 bg-slate-50/60 border border-slate-200/50 rounded-2xl px-4 py-3 focus-within:bg-white focus-within:border-blue-400 transition">
+              {keywords.map((kw) => (
+                <span key={kw} className="flex items-center gap-1.5 bg-blue-50 text-blue-500 text-xs font-bold pl-3 pr-2 py-1.5 rounded-full border border-blue-100">
+                  #{kw}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveKeyword(kw)}
+                    className="w-4 h-4 rounded-full bg-white/70 hover:bg-rose-50 hover:text-rose-500 flex items-center justify-center text-[10px] font-black transition cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </span>
               ))}
-            </select>
-            <select
-              className="flex-1 bg-slate-50/60 border border-slate-200/50 rounded-2xl px-4 py-3 text-sm outline-none focus:bg-white focus:border-blue-400 transition cursor-pointer"
-              value={workMonth}
-              onChange={e => setWorkMonth(e.target.value)}
-            >
-              <option value="">월</option>
-              {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                <option key={m} value={m}>{m}월</option>
-              ))}
-            </select>
+              <input
+                className="flex-1 min-w-[120px] bg-transparent text-sm outline-none py-1"
+                placeholder={keywords.length === 0 ? '키워드 입력 후 Enter (예: 크레인이동)' : '키워드 추가...'}
+                value={keywordInput}
+                onChange={e => setKeywordInput(e.target.value)}
+                onKeyDown={handleKeywordInputKeyDown}
+                onBlur={addKeywordFromInput}
+              />
+            </div>
           </div>
         </div>
+      )}
 
-        <div className="space-y-1.5 md:col-span-2">
-          <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">작업지 주소 <span className="normal-case font-medium text-slate-300">(선택)</span></label>
-          <div className="flex gap-2">
+      {category === '보유장비' && (
+        <div className="animate-fadeIn grid grid-cols-1 md:grid-cols-2 gap-4 px-1">
+          <div className="space-y-1.5 md:col-span-2">
+            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">규격 및 재원</label>
             <input
-              className="flex-1 bg-slate-50/60 border border-slate-200/50 rounded-2xl px-5 py-3 text-sm outline-none focus:bg-white focus:border-blue-400 transition"
-              placeholder="주소 검색 버튼을 눌러주세요"
-              value={workAddress}
-              readOnly
+              className="w-full bg-slate-50/60 border border-slate-200/50 rounded-2xl px-5 py-3 text-sm outline-none focus:bg-white focus:border-blue-400 transition"
+              placeholder="예: 50톤, 10M, 200kg"
+              value={specifications}
+              onChange={e => setSpecifications(e.target.value)}
             />
-            <button
-              type="button"
-              onClick={handleAddressSearch}
-              className="shrink-0 bg-slate-900 hover:bg-blue-500 text-white text-xs font-bold px-4 py-3 rounded-2xl transition cursor-pointer"
-            >
-              주소 검색
-            </button>
-            {workAddress && (
-              <button
-                type="button"
-                onClick={handleClearAddress}
-                className="shrink-0 bg-slate-100 hover:bg-rose-50 hover:text-rose-500 text-slate-400 text-xs font-bold px-3 py-3 rounded-2xl transition cursor-pointer"
-              >
-                ✕
-              </button>
-            )}
           </div>
-          {workLat != null && workLng != null && (
-            <p className="text-[10px] text-blue-400 font-mono pl-1">📍 {workLat.toFixed(6)}, {workLng.toFixed(6)}</p>
-          )}
-        </div>
-      </div>
 
-      <div className="px-1 space-y-1.5">
-        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">작업 키워드 <span className="normal-case font-medium text-slate-300">(선택 · 복수 등록 가능)</span></label>
-        <div className="flex flex-wrap items-center gap-2 bg-slate-50/60 border border-slate-200/50 rounded-2xl px-4 py-3 focus-within:bg-white focus-within:border-blue-400 transition">
-          {keywords.map((kw) => (
-            <span key={kw} className="flex items-center gap-1.5 bg-blue-50 text-blue-500 text-xs font-bold pl-3 pr-2 py-1.5 rounded-full border border-blue-100">
-              #{kw}
-              <button
-                type="button"
-                onClick={() => handleRemoveKeyword(kw)}
-                className="w-4 h-4 rounded-full bg-white/70 hover:bg-rose-50 hover:text-rose-500 flex items-center justify-center text-[10px] font-black transition cursor-pointer"
-              >
-                ✕
-              </button>
-            </span>
-          ))}
-          <input
-            className="flex-1 min-w-[120px] bg-transparent text-sm outline-none py-1"
-            placeholder={keywords.length === 0 ? '키워드 입력 후 Enter (예: 크레인이동)' : '키워드 추가...'}
-            value={keywordInput}
-            onChange={e => setKeywordInput(e.target.value)}
-            onKeyDown={handleKeywordInputKeyDown}
-            onBlur={addKeywordFromInput}
-          />
-        </div>
-      </div>
+          <div className="space-y-1.5">
+            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">보유량</label>
+            <input
+              className="w-full bg-slate-50/60 border border-slate-200/50 rounded-2xl px-5 py-3 text-sm outline-none focus:bg-white focus:border-blue-400 transition"
+              placeholder="예: 2대"
+              value={quantity}
+              onChange={e => setQuantity(e.target.value)}
+            />
+          </div>
 
-      {/* ✨ [신규] 에디터 및 전체화면 버튼 래퍼 */}
-      <div className="px-1">
+          <div className="space-y-1.5">
+            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">제조 년도</label>
+            <input
+              className="w-full bg-slate-50/60 border border-slate-200/50 rounded-2xl px-5 py-3 text-sm outline-none focus:bg-white focus:border-blue-400 transition"
+              placeholder="예: 2026.07"
+              value={mappingYear}
+              onChange={e => setMappingYear(e.target.value)} // ✨ 기존 setQuantity로 되어 있던 버그 수정
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">관리 등급</label>
+            <select
+              className="w-full bg-slate-50/60 border border-slate-200/50 rounded-2xl px-5 py-3 text-sm outline-none focus:bg-white focus:border-blue-400 transition cursor-pointer"
+              value={managementGrade}
+              onChange={e => setManagementGrade(e.target.value)}
+            >
+              <option value="최상">최상</option>
+              <option value="정밀검사필">정밀검사필</option>
+              <option value="정밀양호">정밀양호</option>
+              <option value="양호">양호</option>
+              <option value="점검중">점검중</option>
+              <option value="도입예정">도입예정</option>
+            </select>
+          </div>
+        </div>
+      )}
+
+      {/* ✨ 에디터 및 전체화면 버튼 래퍼 */}
+      <div className="px-1 pt-2">
         <div className="flex justify-between items-end pb-2">
           <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">본문 편집</label>
           <button

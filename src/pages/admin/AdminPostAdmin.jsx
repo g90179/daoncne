@@ -59,7 +59,7 @@ const AdminPostAdmin = ({ posts, fetchPosts, activeTab, setActiveTab }) => {
 
       formData.append('content', content || '');
       formData.append('title', title || (content.length > 15 ? content.substring(0, 15) + '...' : '포트폴리오'));
-      formData.append('category', activeTab || '현장사진');
+      formData.append('category', activeTab || '공사실적');
 
       formData.append('clientName', clientName || '');
       formData.append('workAddress', workAddress || '');
@@ -113,7 +113,7 @@ const AdminPostAdmin = ({ posts, fetchPosts, activeTab, setActiveTab }) => {
           <div>
             <div className="mb-6 flex justify-center sm:justify-start">
               <div className="bg-slate-200/50 backdrop-blur-sm p-1.5 rounded-2xl border border-white/60 flex gap-1 shadow-inner w-full sm:w-auto">
-                {['현장사진', '공사실적', '보유장비'].map(tab => {
+                {['공사실적', '보유장비'].map(tab => {
                   const isTabActive = activeTab === tab;
                   return (
                     <button 
