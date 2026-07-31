@@ -118,7 +118,7 @@ const CompanyCredentials = () => {
       <div className="w-full bg-slate-50 min-h-screen text-neutral-900 font-sans antialiased selection:bg-blue-500/10 selection:text-blue-600">
         
         {/* 🌌 상단 프리미엄 미니멀 헤더 플레이트  */}
-        <header className="bg-white border-b border-neutral-200/60 pt-32 pb-16 px-4 md:px-10 text-center relative overflow-hidden">
+        <header className="bg-white border-b border-neutral-200/60 pt-32 pb-4 px-4 md:px-10 text-center relative overflow-hidden">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full pointer-events-none opacity-40">
             <div className="absolute top-12 left-10 w-72 h-72 bg-blue-400/10 rounded-full blur-3xl animate-pulse" />
           </div>
