@@ -1,5 +1,5 @@
 // daon-frontend/src/components/AdminPostEditor.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../api/axios';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import {
@@ -29,7 +29,7 @@ import { API_URL } from '../config';
 
 const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState('공사실적'); // ✨ 기본값을 공사실적으로 변경
+  const [category, setCategory] = useState('공사실적'); 
   const [content, setContent] = useState('');
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [existingFiles, setExistingFiles] = useState([]);
@@ -49,7 +49,10 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
   const [specifications, setSpecifications] = useState('');
   const [quantity, setQuantity] = useState('');
   const [mappingYear, setMappingYear] = useState('');
-  const [managementGrade, setManagementGrade] = useState('양호'); // ✨ 기본값 '양호'로 변경
+  const [managementGrade, setManagementGrade] = useState('양호'); 
+
+  // ✨ 파일 인풋 초기화를 위한 ref
+  const fileInputRef = useRef(null);
 
   // ✨ 에디터 전체화면 상태 관리
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -63,6 +66,38 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
     }
     return () => { document.body.style.overflow = 'auto'; };
   }, [isFullscreen]);
+
+  // ✨ 폼 초기화 함수
+  const resetForm = () => {
+    setTitle('');
+    setCategory('공사실적');
+    setContent('');
+    setSelectedFiles([]);
+    setExistingFiles([]);
+    setDeletedFileIds([]);
+    
+    // 공사실적 초기화
+    setClientName('');
+    setWorkAddress('');
+    setWorkLat(null);
+    setWorkLng(null);
+    setKeywords([]);
+    setKeywordInput('');
+    const now = new Date();
+    setWorkYear(String(now.getFullYear()));
+    setWorkMonth(String(now.getMonth() + 1));
+
+    // 보유장비 초기화
+    setSpecifications('');
+    setQuantity('');
+    setMappingYear('');
+    setManagementGrade('양호');
+
+    // 파일 인풋 돔 초기화
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   useEffect(() => {
     if (editingPost) {
@@ -87,19 +122,9 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
       setSpecifications(editingPost.specifications || '');
       setQuantity(editingPost.quantity || '');
       setMappingYear(editingPost.mappingYear || '');
-      setManagementGrade(editingPost.managementGrade || '양호'); // ✨ 기본값 '양호'로 변경
+      setManagementGrade(editingPost.managementGrade || '양호'); 
     } else {
-      setTitle(''); setContent(''); setSelectedFiles([]); setExistingFiles([]); setDeletedFileIds([]);
-      
-      // 공사실적 초기화
-      setClientName(''); setWorkAddress(''); setWorkLat(null); setWorkLng(null);
-      setKeywords([]); setKeywordInput('');
-      const now = new Date();
-      setWorkYear(String(now.getFullYear()));
-      setWorkMonth(String(now.getMonth() + 1));
-
-      // 보유장비 초기화
-      setSpecifications(''); setQuantity(''); setMappingYear(''); setManagementGrade('양호'); // ✨ 기본값 '양호'로 변경
+      resetForm();
     }
   }, [editingPost]);
 
@@ -210,6 +235,7 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
         });
       }
       alert('저장 완료');
+      resetForm(); // ✨ 저장 후 폼 완벽 초기화
       onSuccess();
     } catch (err) { 
       console.error(err);
@@ -246,7 +272,7 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
             onClick={handleSubmit} 
             className="bg-blue-400 text-white px-6 py-2.5 rounded-xl text-xs font-bold hover:bg-blue-500 shadow-lg shadow-blue-400/20 transition-all active:scale-95 cursor-pointer"
           >
-            {editingPost ? 'Update Post' : 'Publish'}
+            {editingPost ? '수정 업데이트' : '작성 업로드'}
           </button>
         </div>
       </div>
@@ -388,7 +414,7 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
               className="w-full bg-slate-50/60 border border-slate-200/50 rounded-2xl px-5 py-3 text-sm outline-none focus:bg-white focus:border-blue-400 transition"
               placeholder="예: 2026.07"
               value={mappingYear}
-              onChange={e => setMappingYear(e.target.value)} // ✨ 기존 setQuantity로 되어 있던 버그 수정
+              onChange={e => setMappingYear(e.target.value)} 
             />
           </div>
 
@@ -480,7 +506,7 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
                   },
                   placeholder: '내용을 입력하세요.'
                 } }
-                data={ editingPost ? editingPost.content : '' }
+                data={ editingPost ? editingPost.content : content }
                 onChange={ ( event, editor ) => {
                   const data = editor.getData();
                   setContent( data );
@@ -513,6 +539,7 @@ const AdminPostEditor = ({ editingPost, onCancel, onSuccess }) => {
           <div className="flex items-center gap-4">
             <input 
               type="file" 
+              ref={fileInputRef}
               multiple 
               onChange={handleFileChange} 
               className="block w-full text-xs text-slate-400 font-medium file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-slate-900 file:text-white file:hover:bg-blue-400 file:transition-all file:cursor-pointer" 
