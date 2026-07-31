@@ -155,6 +155,16 @@ const CompanyCredentials = () => {
               </button>
             ))}
           </div>
+
+          {/* ✨ [신규] 회사소개 PDF 다운로드 (작은 버튼) */}
+          <div className="flex justify-center mt-4 relative z-10">
+            <a
+              href={`${API_URL}/brochure/download`}
+              className="inline-flex items-center gap-1.5 text-[11px] font-bold text-blue-500 hover:text-blue-600 bg-blue-50/70 hover:bg-blue-50 px-4 py-2 rounded-full border border-blue-100 transition-all cursor-pointer"
+            >
+              📄 회사소개 PDF 다운로드
+            </a>
+          </div>
         </header>
 
         {/* 📄 본문 메인 캔버스 보드 플레이트  */}

@@ -303,6 +303,29 @@ const HomeView = ({ isLoggedIn = false }) => {
 
         </div>
       </section>
+
+      {/* ✨ [신규] 회사소개서 PDF 다운로드 섹션 (푸터 바로 위) */}
+      <section className="w-full bg-slate-50 border-t border-neutral-100 py-14 px-4 md:px-10">
+        <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 bg-white rounded-[2rem] border border-neutral-200/60 shadow-sm p-8 md:p-10">
+          <div className="text-center md:text-left space-y-1.5">
+            <div className="text-[10px] tracking-widest font-black text-blue-500 uppercase font-mono bg-blue-50 px-3 py-1 rounded-full inline-block">
+              Company Brochure
+            </div>
+            <h3 className="text-lg md:text-xl font-black text-neutral-900">
+              다온씨엔이 회사소개서 PDF 다운로드
+            </h3>
+            <p className="text-xs text-neutral-400 font-medium">
+              다운로드 시점의 최신 회사 정보와 시공 실적이 반영된 문서입니다.
+            </p>
+          </div>
+          <a
+            href={`${API_URL}/brochure/download`}
+            className="shrink-0 inline-flex items-center gap-2 bg-neutral-900 hover:bg-blue-500 text-white text-sm font-bold px-7 py-3.5 rounded-2xl shadow-md transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+          >
+            📄 PDF 다운로드
+          </a>
+        </div>
+      </section>
     </div>
   );
 };
