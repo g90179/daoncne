@@ -1,11 +1,10 @@
 // daon-frontend/src/pages/admin/AdminStampTool.jsx
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
-import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import api from '../../api/axios';
 import { API_URL } from '../../config';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
 const AdminStampTool = () => {
   const [pdfFile, setPdfFile] = useState(null);
