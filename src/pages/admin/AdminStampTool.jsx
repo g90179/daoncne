@@ -13,8 +13,11 @@ const AdminStampTool = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
 
+
+  // ✨ [변경] 도장 크기를 9%로 고정 (더 이상 조절 불가)
+  const STAMP_WIDTH_PCT = 9;
   // 도장 위치: 캔버스(=페이지) 대비 퍼센트 좌표, 도장 중심점 기준
-  const [stampPos, setStampPos] = useState({ xPct: 70, yPct: 80, widthPct: 18 });
+  const [stampPos, setStampPos] = useState({ xPct: 70, yPct: 80, widthPct: STAMP_WIDTH_PCT });
   const [placements, setPlacements] = useState([]); // 여러 페이지/여러 위치에 찍을 목록
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -195,23 +198,6 @@ const AdminStampTool = () => {
       {pdfDoc && (
         <div className="bg-white/80 backdrop-blur-xl p-6 md:p-8 rounded-[2rem] border border-white/70 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage <= 1}
-                className="text-xs font-bold px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-40 cursor-pointer"
-              >
-                ← 이전
-              </button>
-              <span className="text-xs font-bold text-slate-600">{currentPage} / {numPages} 페이지</span>
-              <button
-                onClick={() => setCurrentPage(p => Math.min(numPages, p + 1))}
-                disabled={currentPage >= numPages}
-                className="text-xs font-bold px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-40 cursor-pointer"
-              >
-                다음 →
-              </button>
-            </div>
             {placements.some(p => p.page === currentPage - 1) && (
               <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full">
                 ✔ 이 페이지에 도장 위치 지정됨
