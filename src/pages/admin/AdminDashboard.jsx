@@ -6,6 +6,7 @@ import MainSlideAdmin from './MainSlideAdmin';
 import AdminUserAdmin from './AdminUserAdmin';
 import AdminCompanyAdmin from './AdminCompanyAdmin';
 import AdminPolicyAdmin from './AdminPolicyAdmin'; 
+import AdminStampAdmin from './AdminStampTool';
 import AdminVisitorLog from './AdminVisitorLog';
 import MobileUploadModal from '../../components/MobileUploadModal';
 import api from '../../api/axios'; // 🔑 통합된 API 인스턴스 사용
@@ -44,6 +45,7 @@ const AdminDashboard = ({
     users: '계정 관리',
     company: '회사 정보 관리',
     policies: '정책 관리',
+    Stamp: '계약서 승인',
     visitors: '방문자 분석 통계'
   };
 
@@ -124,7 +126,9 @@ const AdminDashboard = ({
               { id: 'users', label: '계정 관리', icon: '👤' },
               { id: 'company', label: '회사 정보 관리', icon: '🏢' },
               { id: 'policies', label: '정책 관리', icon: '📋' },
+              { id: 'stamp', label: '계약서 승인', icon: '✅' },
               { id: 'visitors', label: '방문자 통계', icon: '📊' },
+              
             ].map((menu) => {
               const isActive = adminView === menu.id;
               return (
@@ -216,7 +220,9 @@ const AdminDashboard = ({
               />
             )}
             {adminView === 'policies' && <AdminPolicyAdmin />}
+            {adminView === 'stamp' && <AdminStampAdmin />}
             {adminView === 'visitors' && <AdminVisitorLog />}
+            
           </div>
         </div>
       </main>
