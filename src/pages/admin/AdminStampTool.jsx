@@ -14,7 +14,7 @@ const AdminStampTool = () => {
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
 
   // ✨ [변경] 도장 크기를 9%로 고정 (더 이상 조절 불가)
-  const STAMP_WIDTH_PCT = 9;
+  const STAMP_WIDTH_PCT = 9.5;
 
   // 도장 위치: 캔버스(=페이지) 대비 퍼센트 좌표, 도장 중심점 기준
   const [stampPos, setStampPos] = useState({ xPct: 70, yPct: 80, widthPct: STAMP_WIDTH_PCT });
