@@ -57,23 +57,55 @@ const AdminStampTool = () => {
 
   useEffect(() => { renderPage(); }, [renderPage]);
 
-  // 도장 드래그 이동
+  // ✨ [신규] 마우스/터치 이벤트에서 좌표를 통일해서 꺼내는 헬퍼
+  const getPointFromEvent = (e) => {
+    if (e.touches && e.touches.length > 0) {
+      return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+    if (e.changedTouches && e.changedTouches.length > 0) {
+      return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+    }
+    return { x: e.clientX, y: e.clientY };
+  };
+
+  // ✨ [변경] 마우스 드래그 시작
   const handleStampMouseDown = (e) => {
     e.preventDefault();
+    const point = getPointFromEvent(e);
     dragRef.current = {
       dragging: true,
-      startX: e.clientX,
-      startY: e.clientY,
+      startX: point.x,
+      startY: point.y,
       startPos: { ...stampPos },
     };
     window.addEventListener('mousemove', handleDragMove);
     window.addEventListener('mouseup', handleDragEnd);
   };
 
+  // ✨ [신규] 터치 드래그 시작 (모바일)
+  const handleStampTouchStart = (e) => {
+    // preventDefault로 페이지 스크롤이 함께 일어나는 걸 막음
+    e.preventDefault();
+    const point = getPointFromEvent(e);
+    dragRef.current = {
+      dragging: true,
+      startX: point.x,
+      startY: point.y,
+      startPos: { ...stampPos },
+    };
+    window.addEventListener('touchmove', handleDragMove, { passive: false });
+    window.addEventListener('touchend', handleDragEnd);
+    window.addEventListener('touchcancel', handleDragEnd);
+  };
+
+  // ✨ [변경] 이동 처리 (마우스/터치 공용)
   const handleDragMove = (e) => {
     if (!dragRef.current.dragging || !canvasSize.width) return;
-    const dx = e.clientX - dragRef.current.startX;
-    const dy = e.clientY - dragRef.current.startY;
+    if (e.type === 'touchmove') e.preventDefault(); // 드래그 중 배경 스크롤 방지
+
+    const point = getPointFromEvent(e);
+    const dx = point.x - dragRef.current.startX;
+    const dy = point.y - dragRef.current.startY;
     const dxPct = (dx / canvasSize.width) * 100;
     const dyPct = (dy / canvasSize.height) * 100;
 
@@ -84,10 +116,14 @@ const AdminStampTool = () => {
     }));
   };
 
+  // ✨ [변경] 드래그 종료 (마우스/터치 리스너 모두 정리)
   const handleDragEnd = () => {
     dragRef.current.dragging = false;
     window.removeEventListener('mousemove', handleDragMove);
     window.removeEventListener('mouseup', handleDragEnd);
+    window.removeEventListener('touchmove', handleDragMove);
+    window.removeEventListener('touchend', handleDragEnd);
+    window.removeEventListener('touchcancel', handleDragEnd);
   };
 
   // 현재 페이지에 이 위치를 도장 목록에 추가
@@ -204,6 +240,7 @@ const AdminStampTool = () => {
               src={`${API_URL}/stamp/seal-image`}
               alt="도장"
               onMouseDown={handleStampMouseDown}
+              onTouchStart={handleStampTouchStart}
               className="absolute cursor-move select-none pointer-events-auto opacity-90 hover:opacity-100 transition-opacity"
               style={stampBoxStyle}
               draggable={false}
