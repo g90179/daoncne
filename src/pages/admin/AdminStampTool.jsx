@@ -13,9 +13,9 @@ const AdminStampTool = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
 
-
   // ✨ [변경] 도장 크기를 9%로 고정 (더 이상 조절 불가)
   const STAMP_WIDTH_PCT = 9;
+
   // 도장 위치: 캔버스(=페이지) 대비 퍼센트 좌표, 도장 중심점 기준
   const [stampPos, setStampPos] = useState({ xPct: 70, yPct: 80, widthPct: STAMP_WIDTH_PCT });
   const [placements, setPlacements] = useState([]); // 여러 페이지/여러 위치에 찍을 목록
@@ -198,6 +198,23 @@ const AdminStampTool = () => {
       {pdfDoc && (
         <div className="bg-white/80 backdrop-blur-xl p-6 md:p-8 rounded-[2rem] border border-white/70 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage <= 1}
+                className="text-xs font-bold px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-40 cursor-pointer"
+              >
+                ← 이전
+              </button>
+              <span className="text-xs font-bold text-slate-600">{currentPage} / {numPages} 페이지</span>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(numPages, p + 1))}
+                disabled={currentPage >= numPages}
+                className="text-xs font-bold px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-40 cursor-pointer"
+              >
+                다음 →
+              </button>
+            </div>
             {placements.some(p => p.page === currentPage - 1) && (
               <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full">
                 ✔ 이 페이지에 도장 위치 지정됨
@@ -206,7 +223,7 @@ const AdminStampTool = () => {
           </div>
 
           {/* 도장 크기 조절 슬라이더 */}
-          <div className="flex items-center gap-3">
+          {/* <div className="flex items-center gap-3">
             <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0">도장 크기</label>
             <input
               type="range"
@@ -217,7 +234,7 @@ const AdminStampTool = () => {
               className="flex-1 cursor-pointer"
             />
             <span className="text-xs font-mono text-slate-500 w-10">{stampPos.widthPct}%</span>
-          </div>
+          </div> */}
 
           {/* PDF 미리보기 + 드래그 가능한 도장 오버레이 */}
           <div ref={containerRef} className="relative border border-slate-200 rounded-2xl overflow-hidden bg-slate-50">
