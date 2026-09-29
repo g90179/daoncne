@@ -15,6 +15,12 @@ const MainSlideAdmin = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
+
+  // 🖐️ 노출 순서 드래그 정렬 - 드래그 중인 슬라이드의 id를 들고 있다가, 드롭 대상 위에서
+  // 순서만 바꿔치기한다(서버 저장은 드롭이 끝난 뒤 한 번만).
+  const [draggingId, setDraggingId] = useState(null);
+  const [dragOverId, setDragOverId] = useState(null);
+  const [isReordering, setIsReordering] = useState(false);
   
   const [formData, setFormData] = useState({
     title: '', description: '', videoUrl: '', isExposed: true, duration: 5
@@ -116,6 +122,34 @@ const MainSlideAdmin = () => {
     } catch (err) { alert('삭제 실패'); }
   };
 
+  // 드래그로 순서를 바꾼 뒤 손을 뗀 시점에 전체 id 배열을 서버로 보내 저장한다.
+  const handleDrop = async (targetId) => {
+    setDragOverId(null);
+    const sourceId = draggingId;
+    setDraggingId(null);
+    if (sourceId == null || sourceId === targetId) return;
+
+    const sourceIndex = slides.findIndex((s) => s.id === sourceId);
+    const targetIndex = slides.findIndex((s) => s.id === targetId);
+    if (sourceIndex === -1 || targetIndex === -1) return;
+
+    const reordered = [...slides];
+    const [moved] = reordered.splice(sourceIndex, 1);
+    reordered.splice(targetIndex, 0, moved);
+
+    const prevSlides = slides;
+    setSlides(reordered); // 낙관적 반영 - 서버 응답을 기다리지 않고 바로 화면에 보여준다.
+    setIsReordering(true);
+    try {
+      await api.patch('/main-slides/reorder', { ids: reordered.map((s) => s.id) });
+    } catch (err) {
+      alert('노출 순서 저장에 실패했습니다. 다시 시도해 주세요.');
+      setSlides(prevSlides);
+    } finally {
+      setIsReordering(false);
+    }
+  };
+
   const resetForm = () => {
     setFormData({ title: '', description: '', videoUrl: '', isExposed: true, duration: 5 });
     setEditingId(null);
@@ -139,10 +173,11 @@ const MainSlideAdmin = () => {
         <div className="bg-white/90 backdrop-blur-md p-6 md:p-8 rounded-[2.5rem] shadow-[0_25px_60px_rgba(0,0,0,0.02)] border border-white/70 flex flex-col justify-between h-[85vh] transition-all">
           
           {/* 플랫 헤더 */}
-          <div className="border-b border-slate-100 pb-3 mb-2 px-1">
+          <div className="border-b border-slate-100 pb-3 mb-2 px-1 flex items-center justify-between">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
               슬라이드 대기열목록 ({slides.length})
             </h3>
+            <span className="text-[10px] text-slate-300 font-medium">⠿ 손잡이를 끌어서 노출 순서 변경</span>
           </div>
 
           {/* 슬라이드 아이템 피드 본문 (테이블 제거 후 플랫 타임라인화) */}
@@ -155,10 +190,27 @@ const MainSlideAdmin = () => {
             ) : (
               <div className="divide-y divide-slate-100">
                 {currentSlides.map((slide) => (
-                  <div key={slide.id} className="group flex items-center justify-between py-4 px-1 hover:bg-slate-50/60 transition-all duration-200">
-                    
+                  <div
+                    key={slide.id}
+                    draggable
+                    onDragStart={() => setDraggingId(slide.id)}
+                    onDragOver={(e) => { e.preventDefault(); if (dragOverId !== slide.id) setDragOverId(slide.id); }}
+                    onDragLeave={() => setDragOverId((cur) => (cur === slide.id ? null : cur))}
+                    onDrop={(e) => { e.preventDefault(); handleDrop(slide.id); }}
+                    onDragEnd={() => { setDraggingId(null); setDragOverId(null); }}
+                    className={`group flex items-center justify-between py-4 px-1 hover:bg-slate-50/60 transition-all duration-200 ${
+                      draggingId === slide.id ? 'opacity-40' : ''
+                    } ${dragOverId === slide.id && draggingId !== slide.id ? 'border-t-2 border-t-blue-400' : ''}`}
+                  >
                     {/* 정보 결합단 */}
                     <div className="flex items-center gap-4 min-w-0 flex-1">
+                      {/* 드래그 손잡이 - 이 아이콘을 잡아 순서를 바꾼다 */}
+                      <span
+                        className="shrink-0 cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-400 select-none text-sm leading-none px-0.5"
+                        title="드래그해서 노출 순서 변경"
+                      >
+                        ⠿
+                      </span>
                       {/* 가상 비디오 사각 썸네일 플레이스홀더 */}
                       <div className="w-14 h-14 rounded-xl bg-slate-100 border border-slate-200/40 flex flex-col items-center justify-center shrink-0 shadow-inner text-slate-400 font-mono text-[10px] font-bold">
                         <span>▶</span>
