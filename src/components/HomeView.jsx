@@ -118,7 +118,7 @@ const HomeView = ({ isLoggedIn = false }) => {
           isLoading ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
       >
-        <div className="w-9 h-9 border-4 border-neutral-800 border-t-white rounded-full animate-spin" />
+        <img src="/favicon_ex.svg" alt="다온씨엔이" className="w-12 h-12 animate-pulse" />
         <div className="text-white text-sm font-light tracking-[0.3em] uppercase">
           daon<span className="font-bold text-neutral-400">cne</span>
         </div>
