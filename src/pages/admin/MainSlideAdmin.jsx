@@ -162,6 +162,7 @@ const MainSlideAdmin = () => {
   const indexOfLastItem = currentPage * ITEMS_PER_PAGE;
   const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE;
   const currentSlides = slides.slice(indexOfFirstItem, indexOfLastItem);
+  const exposedCount = slides.filter((s) => s.isExposed).length;
 
   return (
     <div className="max-w-12xl mx-auto animate-fadeIn">
@@ -174,8 +175,11 @@ const MainSlideAdmin = () => {
           
           {/* 플랫 헤더 */}
           <div className="border-b border-slate-100 pb-3 mb-2 px-1 flex items-center justify-between">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
               슬라이드 대기열목록 ({slides.length})
+              <span className="normal-case tracking-normal font-semibold text-blue-500 bg-blue-50 px-2 py-0.5 rounded-md">
+                노출중 {exposedCount}
+              </span>
             </h3>
             <span className="text-[10px] text-slate-300 font-medium">⠿ 손잡이를 끌어서 노출 순서 변경</span>
           </div>
@@ -210,6 +214,10 @@ const MainSlideAdmin = () => {
                         title="드래그해서 노출 순서 변경"
                       >
                         ⠿
+                      </span>
+                      {/* 현재 노출 순번(전체 목록 기준, 페이지와 무관) */}
+                      <span className="shrink-0 w-5 text-center text-[11px] font-bold text-slate-300 font-mono">
+                        {slides.findIndex((s) => s.id === slide.id) + 1}
                       </span>
                       {/* 가상 비디오 사각 썸네일 플레이스홀더 */}
                       <div className="w-14 h-14 rounded-xl bg-slate-100 border border-slate-200/40 flex flex-col items-center justify-center shrink-0 shadow-inner text-slate-400 font-mono text-[10px] font-bold">
