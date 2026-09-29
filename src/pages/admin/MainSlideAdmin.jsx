@@ -111,6 +111,18 @@ const MainSlideAdmin = () => {
     setSelectedFile(null);
   };
 
+  // 리스트에서 바로 켜고 끄는 노출 스위치 - 수정 폼을 열지 않고 즉시 반영(낙관적 업데이트).
+  const handleToggleExposed = async (slide) => {
+    const nextExposed = !slide.isExposed;
+    setSlides((prev) => prev.map((s) => (s.id === slide.id ? { ...s, isExposed: nextExposed } : s)));
+    try {
+      await api.put(`/main-slides/${slide.id}`, { ...slide, isExposed: nextExposed });
+    } catch (err) {
+      alert('노출 상태 변경에 실패했습니다.');
+      setSlides((prev) => prev.map((s) => (s.id === slide.id ? { ...s, isExposed: slide.isExposed } : s)));
+    }
+  };
+
   const handleDelete = async (id) => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
     try {
@@ -238,14 +250,30 @@ const MainSlideAdmin = () => {
 
                     {/* 상태 및 액션 제어단 */}
                     <div className="flex items-center shrink-0 pl-4 gap-4">
-                      {/* 노출 여부 배지: bg-blue-400 테마 조율 */}
-                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-xl transition shadow-sm ${
-                        slide.isExposed 
-                          ? 'bg-blue-50 text-blue-500 border border-blue-100' 
-                          : 'bg-slate-100 text-slate-400'
-                      }`}>
-                        {slide.isExposed ? '노출중' : '숨김'}
-                      </span>
+                      {/* 노출 스위치 - 폼을 열지 않고 바로 켜고 끈다 */}
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={slide.isExposed}
+                        title={slide.isExposed ? '노출 끄기' : '노출 켜기'}
+                        onClick={() => handleToggleExposed(slide)}
+                        className={`shrink-0 flex items-center gap-1.5 cursor-pointer select-none focus:outline-none`}
+                      >
+                        <span
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 ${
+                            slide.isExposed ? 'bg-blue-400' : 'bg-slate-200'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                              slide.isExposed ? 'translate-x-[19px]' : 'translate-x-1'
+                            }`}
+                          />
+                        </span>
+                        <span className={`text-[10px] font-bold ${slide.isExposed ? 'text-blue-500' : 'text-slate-400'}`}>
+                          {slide.isExposed ? '노출중' : '숨김'}
+                        </span>
+                      </button>
 
                       <div className="flex items-center gap-1">
                         <button onClick={() => handleEdit(slide)} className="cursor-pointer text-[11px] font-bold px-3 py-1.5 rounded-xl bg-blue-50 text-blue-500 hover:bg-blue-100 transition-all active:scale-95 whitespace-nowrap">수정</button>

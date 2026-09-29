@@ -293,7 +293,7 @@ const CompanyCredentials = () => {
                     ) : (
                       dynamicEquipments.map((e, index) => {
                         const thumbFile = e.files?.find(f => f.type === 'image' || f.name === 'editor_thumbnail');
-                        const thumbUrl = thumbFile ? `${API_URL}${thumbFile.url}` : null;
+                        const thumbUrl = thumbFile ? `${API_URL}${thumbFile.thumbnailUrl || thumbFile.url}` : null;
 
                         return (
                           <tr key={e.id} className="hover:bg-slate-50/50 transition">

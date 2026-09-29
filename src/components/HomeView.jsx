@@ -209,7 +209,7 @@ const HomeView = ({ isLoggedIn = false }) => {
                     
                     {imageFile ? (
                       <img
-                        src={`${API_URL}${imageFile.url}`}
+                        src={`${API_URL}${imageFile.thumbnailUrl || imageFile.url}`}
                         className="w-full h-full object-cover transition-transform duration-500 ease-out brightness-[0.98]"
                         alt={post.title}
                         loading="lazy"

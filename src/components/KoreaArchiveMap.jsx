@@ -59,7 +59,7 @@ const getThumbnailUrl = (post) => {
   if (!post) return null;
   const imageFile = post.files?.find(f => f.type === 'image');
   if (imageFile && imageFile.url) {
-    return `${API_URL}${imageFile.url}`;
+    return `${API_URL}${imageFile.thumbnailUrl || imageFile.url}`;
   }
   return null;
 };
