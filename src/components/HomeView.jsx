@@ -20,7 +20,7 @@ const ForkliftWheel = ({ cx, cy }) => (
 );
 
 const ForkliftLoader = () => (
-  <div className="w-40 h-28 relative drop-shadow-[0_2px_10px_rgba(244,180,0,0.25)]">
+  <div className="w-[96px] h-[67px] relative drop-shadow-[0_2px_10px_rgba(244,180,0,0.25)]">
     <style>{`
       @keyframes forklift-drive { 0%, 100% { transform: translateX(-22px); } 50% { transform: translateX(22px); } }
       @keyframes forklift-fork { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
