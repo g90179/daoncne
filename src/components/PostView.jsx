@@ -1,6 +1,11 @@
 import React from 'react';
 import { API_URL } from '../config';
 
+// 본문 HTML의 <img>는 dangerouslySetInnerHTML로 그대로 꽂혀서 loading="lazy" props를
+// 못 주므로, 렌더링 전에 문자열에 직접 속성을 끼워 넣는다.
+const withLazyImages = (html = '') =>
+  html.replace(/<img(?![^>]*\bloading=)/gi, '<img loading="lazy" decoding="async"');
+
 // ✨ [신규] 확장자 기반 파일 타입 아이콘/라벨 매핑
 const getFileTypeInfo = (fileName = '', fileUrl = '') => {
   const ext = (fileName.split('.').pop() || fileUrl.split('.').pop() || '').toLowerCase();
@@ -78,7 +83,7 @@ const PostView = ({ post, onBack }) => {
 
       <div 
         className="prose prose-slate max-w-none mb-12 border-t pt-8"
-        dangerouslySetInnerHTML={{ __html: post.content }} 
+        dangerouslySetInnerHTML={{ __html: withLazyImages(post.content) }} 
       />
 
       {videoFiles.length > 0 && (

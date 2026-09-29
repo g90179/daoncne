@@ -5,6 +5,12 @@ import { Helmet } from 'react-helmet-async';
 import api from '../api/axios';
 import { API_URL } from '../config';
 
+// 본문(CKEditor로 작성된 원본 HTML) 안의 <img> 태그는 React가 아니라
+// dangerouslySetInnerHTML로 그대로 꽂히기 때문에 loading="lazy"를 props로 못 준다 -
+// 렌더링 직전에 문자열 자체에 속성을 끼워 넣어, 스크롤해서 보일 때만 이미지가 로드되게 한다.
+const withLazyImages = (html = '') =>
+  html.replace(/<img(?![^>]*\bloading=)/gi, '<img loading="lazy" decoding="async"');
+
 // 확장자 기반 파일 타입 아이콘/라벨 매핑
 const getFileTypeInfo = (fileName = '', fileUrl = '') => {
   const ext = (fileName.split('.').pop() || fileUrl.split('.').pop() || '').toLowerCase();
@@ -205,7 +211,7 @@ const PortfolioDetail = () => {
 
                 <article
                   className="w-full max-w-none text-neutral-700 font-sans text-sm md:text-base leading-relaxed animate-fadeIn focus:outline-none prose"
-                  dangerouslySetInnerHTML={{ __html: post.content }}
+                  dangerouslySetInnerHTML={{ __html: withLazyImages(post.content) }}
                 />
               </>
             )}

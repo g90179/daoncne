@@ -302,10 +302,12 @@ const CompanyCredentials = () => {
                             <td className="py-2 px-4 align-middle">
                               <div className="flex justify-center items-center">
                                 {thumbUrl ? (
-                                  <img 
-                                    src={thumbUrl} 
-                                    alt={e.title} 
-                                    className="w-10 h-10 rounded-full opacity-80 object-cover shadow-sm" 
+                                  <img
+                                    src={thumbUrl}
+                                    alt={e.title}
+                                    className="w-10 h-10 rounded-full opacity-80 object-cover shadow-sm"
+                                    loading="lazy"
+                                    decoding="async"
                                   />
                                 ) : (
                                   <div className="w-10 h-10 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-neutral-300 text-[9px] shadow-sm font-bold tracking-tighter opacity-80">

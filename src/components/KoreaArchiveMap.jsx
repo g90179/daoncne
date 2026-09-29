@@ -103,10 +103,12 @@ const LocationListPanel = ({ loc, navigate }) => (
             className="w-full flex items-center gap-2 text-left text-xs font-semibold text-neutral-700 hover:text-[#2bb4e8] p-1.5 rounded-lg hover:bg-blue-50 transition cursor-pointer"
           >
             {thumbUrl && (
-              <img 
-                src={thumbUrl} 
-                alt={post.title} 
+              <img
+                src={thumbUrl}
+                alt={post.title}
                 className="w-8 h-8 object-cover rounded-md flex-shrink-0 bg-neutral-100"
+                loading="lazy"
+                decoding="async"
               />
             )}
             <span className="truncate flex-1">{post.title}</span>
@@ -486,10 +488,12 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
                       style={{ wordBreak : 'auto-phrase' }}>
                         
                         {thumbUrl && (
-                          <img 
-                            src={thumbUrl} 
-                            alt="" 
+                          <img
+                            src={thumbUrl}
+                            alt=""
                             className={`${isMobile ? 'w-10 h-10 rounded-full' : 'w-8 h-8 rounded-md'} object-cover flex-shrink-0 bg-white/20 shadow-sm`}
+                            loading="lazy"
+                            decoding="async"
                           />
                         )}
                         
@@ -540,10 +544,12 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
                       <div className={`bg-neutral-900 hover:bg-neutral-800 transition-colors text-white ${isMobile && thumbUrl ? 'p-1 rounded-full' : 'p-1.5 rounded-lg'} shadow-lg max-w-[150px] flex items-center ${isMobile && thumbUrl ? 'gap-0' : 'gap-1.5'} select-none`}>
                         
                         {thumbUrl && (
-                          <img 
-                            src={thumbUrl} 
-                            alt="" 
+                          <img
+                            src={thumbUrl}
+                            alt=""
                             className={`${isMobile ? 'w-8 h-8 rounded-full' : 'w-6 h-6 rounded-md'} object-cover flex-shrink-0 bg-neutral-800`}
+                            loading="lazy"
+                            decoding="async"
                           />
                         )}
 

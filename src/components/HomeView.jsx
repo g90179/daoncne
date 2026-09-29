@@ -208,10 +208,12 @@ const HomeView = ({ isLoggedIn = false }) => {
                     <div className="absolute inset-0 bg-neutral-950/0 group-hover:bg-neutral-950/5 transition-colors duration-300 z-10 pointer-events-none"></div>
                     
                     {imageFile ? (
-                      <img 
-                        src={`${API_URL}${imageFile.url}`} 
-                        className="w-full h-full object-cover transition-transform duration-500 ease-out brightness-[0.98]" 
-                        alt={post.title} 
+                      <img
+                        src={`${API_URL}${imageFile.url}`}
+                        className="w-full h-full object-cover transition-transform duration-500 ease-out brightness-[0.98]"
+                        alt={post.title}
+                        loading="lazy"
+                        decoding="async"
                       />
                     ) : videoFile ? (
                       <div className="w-full h-full bg-neutral-950 flex items-center justify-center relative overflow-hidden">
