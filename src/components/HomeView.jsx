@@ -9,36 +9,44 @@ import { API_URL } from '../config';
 // 로딩 스플래시용 지게차 애니메이션 - 중량물 설비 이전/설치가 본업인 회사라 번개 아이콘보다
 // 지게차가 왔다갔다 짐을 나르는 편이 더 브랜드에 맞다. 순수 SVG+CSS라 이미지 파일이나
 // 별도 라이브러리 없이 가볍게 동작한다.
+const ForkliftWheel = ({ cx, cy }) => (
+  <g style={{ transformOrigin: `${cx}px ${cy}px` }} className="forklift-wheel">
+    <circle cx={cx} cy={cy} r="7" fill="#111" stroke="#555" strokeWidth="1" />
+    {/* 중심에서 벗어난 스포크를 넣어야 회전이 실제로 눈에 보인다(정중앙 원만 돌리면 티가 안 남) */}
+    <rect x={cx - 1} y={cy - 6} width="2" height="4" fill="#999" />
+    <rect x={cx - 1} y={cy + 2} width="2" height="4" fill="#999" />
+    <circle cx={cx} cy={cy} r="2" fill="#999" />
+  </g>
+);
+
 const ForkliftLoader = () => (
-  <div className="w-24 h-16 relative">
+  <div className="w-40 h-28 relative drop-shadow-[0_2px_10px_rgba(244,180,0,0.25)]">
     <style>{`
-      @keyframes forklift-drive { 0%, 100% { transform: translateX(-14px); } 50% { transform: translateX(14px); } }
-      @keyframes forklift-fork { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+      @keyframes forklift-drive { 0%, 100% { transform: translateX(-22px); } 50% { transform: translateX(22px); } }
+      @keyframes forklift-fork { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
       @keyframes forklift-wheel { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      .forklift-unit { animation: forklift-drive 1.6s ease-in-out infinite; transform-origin: center bottom; }
+      .forklift-unit { animation: forklift-drive 1.6s ease-in-out infinite; }
       .forklift-fork-group { animation: forklift-fork 1.6s ease-in-out infinite; }
-      .forklift-wheel { animation: forklift-wheel 0.7s linear infinite; transform-origin: center; }
+      .forklift-wheel { animation: forklift-wheel 0.7s linear infinite; }
     `}</style>
     <svg viewBox="0 0 100 60" className="w-full h-full overflow-visible">
-      <line x1="0" y1="52" x2="100" y2="52" stroke="#333" strokeWidth="1.5" opacity="0.4" />
+      <line x1="0" y1="52" x2="100" y2="52" stroke="#666" strokeWidth="1.5" opacity="0.5" />
       <g className="forklift-unit">
         {/* 짐(파렛트) - 포크 그룹과 같이 오르내린다 */}
         <g className="forklift-fork-group">
-          <rect x="6" y="22" width="12" height="10" rx="1" fill="#e8b23d" />
-          <rect x="16" y="30" width="4" height="16" fill="#c7c7c7" />
+          <rect x="5" y="20" width="14" height="11" rx="1" fill="#ffce32" stroke="#a86b00" strokeWidth="0.5" />
+          <rect x="16" y="30" width="5" height="17" fill="#dcdcdc" />
         </g>
         {/* 마스트(수직 기둥) */}
-        <rect x="19" y="12" width="3" height="34" fill="#8a8a8a" />
+        <rect x="19" y="10" width="3.5" height="37" fill="#9a9a9a" />
         {/* 차체 */}
-        <rect x="20" y="30" width="34" height="16" rx="2" fill="#f4b400" />
+        <rect x="20" y="29" width="35" height="18" rx="2" fill="#f4b400" stroke="#8a5c00" strokeWidth="0.6" />
         {/* 캐빈 */}
-        <rect x="38" y="18" width="16" height="14" rx="2" fill="#f4b400" />
-        <rect x="41" y="21" width="10" height="8" rx="1" fill="#1a1a1a" opacity="0.55" />
-        {/* 바퀴 */}
-        <circle className="forklift-wheel" cx="28" cy="47" r="6" fill="#1a1a1a" />
-        <circle className="forklift-wheel" cx="28" cy="47" r="2" fill="#666" />
-        <circle className="forklift-wheel" cx="48" cy="47" r="6" fill="#1a1a1a" />
-        <circle className="forklift-wheel" cx="48" cy="47" r="2" fill="#666" />
+        <rect x="39" y="16" width="17" height="15" rx="2" fill="#f4b400" stroke="#8a5c00" strokeWidth="0.6" />
+        <rect x="42" y="19" width="11" height="9" rx="1" fill="#1a1a1a" opacity="0.6" />
+        {/* 바퀴 - 스포크 있는 별도 컴포넌트라 회전이 눈에 보인다 */}
+        <ForkliftWheel cx={29} cy={48} />
+        <ForkliftWheel cx={49} cy={48} />
       </g>
     </svg>
   </div>
