@@ -25,6 +25,9 @@ const HomeView = ({ isLoggedIn = false }) => {
   const [posts, setPosts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [companyInfo, setCompanyInfo] = useState(null); // 회사 정보 상태 추가
+  // 메인 배너/지도가 쓸 데이터도 여기서 같이 받아 각자한테 내려준다(아래 bootstrap 참고)
+  const [mainSlides, setMainSlides] = useState(null);
+  const [mapPositions, setMapPositions] = useState(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 12;
@@ -32,32 +35,28 @@ const HomeView = ({ isLoggedIn = false }) => {
   // ✨ 카테고리 탭 대신 해시태그 필터
   const [selectedKeyword, setSelectedKeyword] = useState(null); // null = 전체
 
+  // 홈페이지 진입 시 MainVideoBanner(main-slides/exposed) + 여기(posts, company) +
+  // KoreaArchiveMap(map-positions), 이렇게 4개 API를 따로 부르던 걸 한 번에 묶어서 받는다 -
+  // 작은 컨테이너 인스턴스가 동시 요청 여러 개를 처리하느라 느려지던 걸 줄이기 위함.
   useEffect(() => {
-    const fetchArchivePosts = async () => {
+    const fetchBootstrap = async () => {
       setIsLoading(true);
       try {
-        const res = await api.get('/posts?category=공사실적');
-        setPosts(Array.isArray(res.data) ? res.data : []);
+        const res = await api.get('/home-bootstrap?category=공사실적');
+        setPosts(Array.isArray(res.data?.posts) ? res.data.posts : []);
+        setCompanyInfo(res.data?.company ?? null);
+        setMainSlides(Array.isArray(res.data?.slides) ? res.data.slides : []);
+        setMapPositions(res.data?.mapPositions ?? []);
       } catch (e) {
-        console.error('공사실적 게시글 로드 실패:', e);
+        console.error('홈 화면 데이터 로드 실패:', e);
         setPosts([]);
+        setMainSlides([]);
+        setMapPositions([]);
       } finally {
         setIsLoading(false);
       }
     };
-
-    // 회사 정보(전화번호 등) 불러오기
-    const fetchCompanyInfo = async () => {
-      try {
-        const res = await api.get('/company');
-        setCompanyInfo(res.data);
-      } catch (e) {
-        console.error('회사 정보 로드 실패:', e);
-      }
-    };
-
-    fetchArchivePosts();
-    fetchCompanyInfo();
+    fetchBootstrap();
   }, []);
 
   useEffect(() => {
@@ -112,7 +111,7 @@ const HomeView = ({ isLoggedIn = false }) => {
     <div className="w-full bg-white text-neutral-900 flex flex-col font-sans antialiased">
       
       {/* 메인 동적 비디오 배너 슬라이더 */}
-      <MainVideoBanner />
+      {mainSlides !== null && <MainVideoBanner initialSlides={mainSlides} />}
 
       {/* 🚀 견적문의 배너 (이미지 스타일 반영) */}
       <section className="w-full bg-[#3e5668] py-4 px-4 shadow-inner">
@@ -150,7 +149,9 @@ const HomeView = ({ isLoggedIn = false }) => {
       </section>
 
       {/* ✨ 시공 현장 지도 */}
-      <KoreaArchiveMap posts={posts} isLoggedIn={isLoggedIn} />
+      {mapPositions !== null && (
+        <KoreaArchiveMap posts={posts} isLoggedIn={isLoggedIn} initialMapPositions={mapPositions} />
+      )}
 
       {/* 아카이브 섹션 */}
       <section className="py-12 bg-white px-4 md:px-10 w-full scroll-mt-20" id="archive">

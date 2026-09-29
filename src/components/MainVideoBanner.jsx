@@ -4,25 +4,31 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/axios'; 
 import { API_URL } from '../config';
 
-const MainVideoBanner = () => {
-  const [slides, setSlides] = useState([]);
+// initialSlides가 주어지면(홈페이지가 /home-bootstrap로 미리 받아온 경우) 이 컴포넌트는
+// 따로 API를 부르지 않는다 - 홈페이지가 슬라이드/회사소개/게시글/지도를 4번 따로 부르던 걸
+// 1번으로 묶으면서, 개별 컴포넌트들이 받은 데이터를 그대로 쓰도록 바꾼 것. prop이 없으면
+// (다른 화면에서 단독으로 쓰일 경우) 예전처럼 자체적으로 불러온다.
+const MainVideoBanner = ({ initialSlides } = {}) => {
+  const [slides, setSlides] = useState(initialSlides ?? []);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!initialSlides);
   const [isVideoBuffering, setIsVideoBuffering] = useState(true);
 
   useEffect(() => {
+    if (initialSlides) return; // 이미 받은 데이터가 있으면 다시 부르지 않는다.
     const fetchExposedSlides = async () => {
       try {
         // 🔑 [수정] axios 대신 통일된 api 인스턴스 사용
         const res = await api.get('/main-slides/exposed');
         setSlides(res.data);
-      } catch (err) { 
-        console.error('메인 배너 로드 실패', err); 
-      } finally { 
-        setIsLoading(false); 
+      } catch (err) {
+        console.error('메인 배너 로드 실패', err);
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchExposedSlides();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

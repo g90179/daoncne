@@ -119,7 +119,26 @@ const LocationListPanel = ({ loc, navigate }) => (
   </div>
 );
 
-const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
+// map-positions 응답(배열 또는 객체)을 { locationKey: {xPct,yPct} } 형태로 정리한다 -
+// 초기 데이터(initialMapPositions)를 받았을 때와 자체 fetch일 때 둘 다 이 로직을 쓴다.
+const toPositionMap = (rawData) => {
+  const positionMap = {};
+  if (Array.isArray(rawData)) {
+    rawData.forEach((item) => {
+      positionMap[item.locationKey] = {
+        xPct: item.xPct !== undefined ? item.xPct : item.offsetXPct,
+        yPct: item.yPct !== undefined ? item.yPct : item.offsetYPct,
+      };
+    });
+  } else if (rawData) {
+    Object.assign(positionMap, rawData);
+  }
+  return positionMap;
+};
+
+// initialMapPositions가 주어지면(홈페이지가 /home-bootstrap로 미리 받아온 경우) 자체
+// fetch를 생략한다 - 관리자 페이지 등 단독으로 쓰이는 곳은 prop 없이 예전처럼 자체 fetch.
+const KoreaArchiveMap = ({ posts = [], isLoggedIn = false, initialMapPositions }) => {
   const navigate = useNavigate();
   const [openKey, setOpenKey] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -159,35 +178,23 @@ const KoreaArchiveMap = ({ posts = [], isLoggedIn = false }) => {
   const [tooltipPositions, setTooltipPositions] = useState({});
   const [draggingKey, setDraggingKey] = useState(null);
   const draggingRef = useRef({ key: null, startX: 0, startY: 0, initialX: 0, initialY: 0 });
-  const [savedPositions, setSavedPositions] = useState({});
-  const [savedPositionsLoaded, setSavedPositionsLoaded] = useState(false);
+  const [savedPositions, setSavedPositions] = useState(() => (initialMapPositions ? toPositionMap(initialMapPositions) : {}));
+  const [savedPositionsLoaded, setSavedPositionsLoaded] = useState(!!initialMapPositions);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => { setTooltipPositions({}); }, [isMobile]);
 
   useEffect(() => {
+    if (initialMapPositions) return; // 이미 받은 데이터가 있으면 다시 부르지 않는다.
     let mounted = true;
     api.get('/map-positions')
       .then(res => {
-        if (mounted) {
-          const rawData = res.data || [];
-          const positionMap = {};
-          if (Array.isArray(rawData)) {
-            rawData.forEach(item => {
-              positionMap[item.locationKey] = {
-                xPct: item.xPct !== undefined ? item.xPct : item.offsetXPct,
-                yPct: item.yPct !== undefined ? item.yPct : item.offsetYPct,
-              };
-            });
-          } else {
-            Object.assign(positionMap, rawData);
-          }
-          setSavedPositions(positionMap);
-        }
+        if (mounted) setSavedPositions(toPositionMap(res.data || []));
       })
       .catch((err) => console.error('❌ 지도 위치 데이터 로드 실패:', err))
       .finally(() => { if (mounted) setSavedPositionsLoaded(true); });
     return () => { mounted = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const { mainLocations, insetLocations } = useMemo(() => {
