@@ -32,13 +32,19 @@ const ForkliftLoader = () => (
     <svg viewBox="0 0 100 60" className="w-full h-full overflow-visible">
       <line x1="0" y1="52" x2="100" y2="52" stroke="#666" strokeWidth="1.5" opacity="0.5" />
       <g className="forklift-unit">
-        {/* 짐(파렛트) - 포크 그룹과 같이 오르내린다 */}
+        {/* 짐(컨테이너 박스) + 포크(앞다리) - 같이 오르내린다 */}
         <g className="forklift-fork-group">
-          <rect x="5" y="20" width="14" height="11" rx="1" fill="#ffce32" stroke="#a86b00" strokeWidth="0.5" />
-          <rect x="16" y="30" width="5" height="17" fill="#dcdcdc" />
+          {/* 컨테이너 박스 - 눈에 잘 띄게 선명한 색 + 골판(줄무늬)으로 컨테이너 느낌 */}
+          <rect x="3" y="13" width="17" height="15" rx="1.2" fill="#e8491f" stroke="#7a2408" strokeWidth="0.8" />
+          <line x1="3" y1="17.5" x2="20" y2="17.5" stroke="#7a2408" strokeWidth="0.6" opacity="0.6" />
+          <line x1="3" y1="23.5" x2="20" y2="23.5" stroke="#7a2408" strokeWidth="0.6" opacity="0.6" />
+          <rect x="6" y="19" width="11" height="3.5" rx="0.5" fill="#ffd166" opacity="0.9" />
+          {/* 포크(앞다리) - 두 갈래 프롱을 뚜렷하게 */}
+          <rect x="5" y="29" width="15" height="2.6" rx="0.5" fill="#c7ccd1" stroke="#4a4d50" strokeWidth="0.6" />
+          <rect x="5" y="33.5" width="15" height="2.6" rx="0.5" fill="#c7ccd1" stroke="#4a4d50" strokeWidth="0.6" />
         </g>
         {/* 마스트(수직 기둥) */}
-        <rect x="19" y="10" width="3.5" height="37" fill="#9a9a9a" />
+        <rect x="19" y="8" width="3.5" height="39" fill="#9a9a9a" stroke="#5c5c5c" strokeWidth="0.4" />
         {/* 차체 */}
         <rect x="20" y="29" width="35" height="18" rx="2" fill="#f4b400" stroke="#8a5c00" strokeWidth="0.6" />
         {/* 캐빈 */}
