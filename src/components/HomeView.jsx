@@ -109,7 +109,21 @@ const HomeView = ({ isLoggedIn = false }) => {
 
   return (
     <div className="w-full bg-white text-neutral-900 flex flex-col font-sans antialiased">
-      
+
+      {/* 홈 데이터(home-bootstrap)가 다 받아지기 전까지 화면 전체를 덮는 스플래시 -
+          "멈췄다가 열리는" 느낌 대신 로딩 중임을 바로 보여준다. 데이터가 오면 페이드아웃. */}
+      <div
+        aria-hidden={!isLoading}
+        className={`fixed inset-0 z-[100] bg-neutral-950 flex flex-col items-center justify-center gap-4 transition-opacity duration-500 ${
+          isLoading ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+      >
+        <div className="w-9 h-9 border-4 border-neutral-800 border-t-white rounded-full animate-spin" />
+        <div className="text-white text-sm font-light tracking-[0.3em] uppercase">
+          daon<span className="font-bold text-neutral-400">cne</span>
+        </div>
+      </div>
+
       {/* 메인 동적 비디오 배너 슬라이더 */}
       {mainSlides !== null && <MainVideoBanner initialSlides={mainSlides} />}
 
